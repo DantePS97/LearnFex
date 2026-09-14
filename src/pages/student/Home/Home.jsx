@@ -46,7 +46,7 @@ const Home = () => {
   ];
 
   const handlePractice = () => {
-    navigate("/practice");
+    navigate("/practica");
   };
 
   const handleRanking = () => {

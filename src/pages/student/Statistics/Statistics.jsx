@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import resultService from "../../../services/resultService";
-import "./Estadistica.css";
+import "./Statistics.css";
 
 const Estadistica = () => {
   const navigate = useNavigate();
