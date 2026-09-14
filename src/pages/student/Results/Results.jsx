@@ -4,7 +4,7 @@ import "./Results.css";
 
 import {
   getRecentResultsByUser,
-} from "../repositories/resultRepository";
+} from "../../../repositories/resultRepository";
 
 const Results = ({ userId }) => {
   const navigate = useNavigate();

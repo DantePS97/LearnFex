@@ -6,6 +6,7 @@ import ForgotPassword from "../pages/auth/ForgotPassword/Forgotpassword";
 import Home from "../pages/student/Home/Home";
 import Practice from "../pages/student/Practice/Practice";
 import Statistics from "../pages/student/Statistics/Statistics";
+import Results from "../pages/student/Results/Results";
 import Ranking from "../pages/student/Ranking/Ranking";
 import Profile from "../pages/student/Profile/Profile";
 import Dashboard from "../pages/admin/Dashboard/Dashboard";
@@ -27,6 +28,8 @@ function AppRoutes() {
 				<Route path="/practica" element={<Practice />} />
 
 				<Route path="/estadisticas" element={<Statistics />} />
+				<Route path="/resultados" element={<Results />} />
+
 
 				<Route path="/ranking" element={<Ranking />} />
 

@@ -80,6 +80,13 @@ export const getRecentResults = (limit = 5) => {
     .slice(0, limit);
 };
 
+export const getRecentResultsByUser = (limit = 5) => {
+  return results
+    .slice()
+    .reverse()
+    .slice(0, limit);
+};
+
 /**
  * Actualizar un resultado
  */
