@@ -1,0 +1,596 @@
+/* =========================================================
+   HOME - CONTENEDOR PRINCIPAL
+========================================================= */
+
+.home-container {
+  width: 100%;
+  min-height: 100vh;
+  padding: 32px;
+  box-sizing: border-box;
+
+  background: #0f172a;
+  color: #f8fafc;
+
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+
+/* =========================================================
+   ENCABEZADO
+========================================================= */
+
+.home-header {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto 30px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  gap: 25px;
+}
+
+.home-welcome {
+  flex: 1;
+}
+
+.home-greeting {
+  margin: 0 0 8px;
+
+  color: #94a3b8;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.home-title {
+  margin: 0;
+
+  font-size: 32px;
+  line-height: 1.2;
+  font-weight: 700;
+
+  color: #f8fafc;
+}
+
+.home-subtitle {
+  margin: 10px 0 0;
+
+  max-width: 600px;
+
+  color: #94a3b8;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.home-level {
+  min-width: 160px;
+  padding: 18px 22px;
+
+  border: 1px solid #263449;
+  border-radius: 14px;
+
+  background: #172033;
+
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.home-level-label {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.home-level strong {
+  color: #f8fafc;
+  font-size: 15px;
+}
+
+
+/* =========================================================
+   ESTADÍSTICAS
+========================================================= */
+
+.home-stats {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto 30px;
+
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+
+  gap: 18px;
+}
+
+.home-stat-card {
+  padding: 20px;
+
+  border: 1px solid #263449;
+  border-radius: 15px;
+
+  background: #172033;
+
+  display: flex;
+  align-items: center;
+
+  gap: 15px;
+
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.home-stat-card:hover {
+  transform: translateY(-3px);
+  border-color: #3b82f6;
+}
+
+.home-stat-icon {
+  width: 46px;
+  height: 46px;
+
+  border-radius: 12px;
+
+  background: #1e293b;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 21px;
+}
+
+.home-stat-label {
+  display: block;
+
+  margin-bottom: 4px;
+
+  color: #64748b;
+  font-size: 12px;
+}
+
+.home-stat-value {
+  color: #f8fafc;
+  font-size: 20px;
+}
+
+
+/* =========================================================
+   ACCIONES PRINCIPALES
+========================================================= */
+
+.home-actions {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto 38px;
+
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+
+  gap: 20px;
+}
+
+.home-action-card {
+  padding: 25px;
+
+  border: 1px solid #263449;
+  border-radius: 18px;
+
+  background: #172033;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+
+  min-height: 180px;
+
+  box-sizing: border-box;
+}
+
+.home-action-practice {
+  border-color: #334d75;
+}
+
+.home-action-content {
+  display: flex;
+  align-items: flex-start;
+
+  gap: 16px;
+}
+
+.home-action-icon {
+  width: 48px;
+  height: 48px;
+
+  flex-shrink: 0;
+
+  border-radius: 13px;
+
+  background: #1e293b;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 21px;
+}
+
+.home-action-card h2 {
+  margin: 0 0 7px;
+
+  font-size: 19px;
+  font-weight: 650;
+}
+
+.home-action-card p {
+  margin: 0;
+
+  color: #94a3b8;
+
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.home-button {
+  align-self: flex-start;
+
+  margin-top: 22px;
+
+  padding: 11px 18px;
+
+  border: none;
+  border-radius: 9px;
+
+  background: #2563eb;
+  color: white;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.home-button:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.home-button-secondary {
+  background: #334155;
+}
+
+.home-button-secondary:hover {
+  background: #475569;
+}
+
+
+/* =========================================================
+   SECCIÓN GENERAL
+========================================================= */
+
+.home-section {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto 35px;
+}
+
+.home-section-header {
+  margin-bottom: 18px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 15px;
+}
+
+.home-section-header h2 {
+  margin: 0 0 5px;
+
+  font-size: 21px;
+}
+
+.home-section-header p {
+  margin: 0;
+
+  color: #64748b;
+  font-size: 13px;
+}
+
+.home-see-more {
+  padding: 8px 13px;
+
+  border: 1px solid #334155;
+  border-radius: 8px;
+
+  background: transparent;
+  color: #94a3b8;
+
+  font-size: 12px;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.home-see-more:hover {
+  background: #1e293b;
+  color: #f8fafc;
+}
+
+
+/* =========================================================
+   ÁREAS
+========================================================= */
+
+.home-areas {
+  display: grid;
+
+  grid-template-columns: repeat(4, 1fr);
+
+  gap: 16px;
+}
+
+.home-area-card {
+  position: relative;
+
+  min-height: 175px;
+
+  padding: 20px;
+
+  box-sizing: border-box;
+
+  border: 1px solid #263449;
+  border-radius: 15px;
+
+  background: #172033;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.home-area-card:hover {
+  transform: translateY(-4px);
+
+  border-color: #3b82f6;
+
+  background: #1a263b;
+}
+
+.home-area-icon {
+  width: 44px;
+  height: 44px;
+
+  margin-bottom: 20px;
+
+  border-radius: 11px;
+
+  background: #1e293b;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: #60a5fa;
+
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.home-area-info h3 {
+  margin: 0 0 7px;
+
+  font-size: 16px;
+}
+
+.home-area-info p {
+  margin: 0;
+
+  color: #64748b;
+
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.home-area-arrow {
+  position: absolute;
+
+  right: 18px;
+  bottom: 17px;
+
+  color: #64748b;
+
+  font-size: 18px;
+
+  transition:
+    transform 0.2s ease,
+    color 0.2s ease;
+}
+
+.home-area-card:hover .home-area-arrow {
+  color: #60a5fa;
+  transform: translateX(4px);
+}
+
+
+/* =========================================================
+   RANKING
+========================================================= */
+
+.home-ranking {
+  width: 100%;
+  max-width: 1200px;
+
+  margin: 0 auto 20px;
+
+  padding: 22px 25px;
+
+  box-sizing: border-box;
+
+  border: 1px solid #263449;
+  border-radius: 16px;
+
+  background: #172033;
+
+  display: flex;
+  align-items: center;
+
+  gap: 18px;
+}
+
+.home-ranking-icon {
+  width: 50px;
+  height: 50px;
+
+  flex-shrink: 0;
+
+  border-radius: 13px;
+
+  background: #1e293b;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 23px;
+}
+
+.home-ranking-content {
+  flex: 1;
+}
+
+.home-ranking-content h2 {
+  margin: 0 0 5px;
+
+  font-size: 17px;
+}
+
+.home-ranking-content p {
+  margin: 0;
+
+  color: #64748b;
+
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.home-ranking-button {
+  padding: 10px 17px;
+
+  border: 1px solid #334155;
+  border-radius: 9px;
+
+  background: #1e293b;
+  color: #e2e8f0;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.home-ranking-button:hover {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: white;
+}
+
+
+/* =========================================================
+   RESPONSIVE - TABLET
+========================================================= */
+
+@media (max-width: 900px) {
+
+  .home-container {
+    padding: 25px;
+  }
+
+  .home-areas {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .home-stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .home-stat-card {
+    padding: 15px;
+  }
+
+  .home-stat-value {
+    font-size: 17px;
+  }
+}
+
+
+/* =========================================================
+   RESPONSIVE - MÓVIL
+========================================================= */
+
+@media (max-width: 650px) {
+
+  .home-container {
+    padding: 18px;
+  }
+
+  .home-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .home-title {
+    font-size: 26px;
+  }
+
+  .home-level {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .home-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .home-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .home-areas {
+    grid-template-columns: 1fr;
+  }
+
+  .home-section-header {
+    align-items: flex-start;
+  }
+
+  .home-ranking {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .home-ranking-button {
+    width: 100%;
+  }
+}
