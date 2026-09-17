@@ -1,22 +1,23 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import "./Results.css";
 
-import {
-  getRecentResultsByUser,
-} from "../repositories/resultRepository";
+import { getResultadoConRespuestas } from "../../../repositories/resultRepository";
+import { useAuth } from "../../../hooks/useAuth";
 
-const Results = ({ userId }) => {
+const Results = () => {
   const navigate = useNavigate();
+  const { resultadoId } = useParams();
+  const { user } = useAuth();
 
-  const [results, setResults] = useState([]);
+  const [resultado, setResultado] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const loadResults = async () => {
-      if (!userId) {
-        setResults([]);
+    const loadResultado = async () => {
+      if (!resultadoId) {
+        setResultado(null);
         setLoading(false);
         return;
       }
@@ -25,63 +26,33 @@ const Results = ({ userId }) => {
         setLoading(true);
         setError("");
 
-        const data = await getRecentResultsByUser(userId);
+        const data = await getResultadoConRespuestas(resultadoId);
 
-        setResults(Array.isArray(data) ? data : []);
+        if (data && user?.uid && data.usuarioId !== user.uid) {
+          setError("No tienes permiso para ver este resultado.");
+          setResultado(null);
+          return;
+        }
+
+        setResultado(data);
       } catch (err) {
-        console.error("Error al cargar los resultados:", err);
-        setError("No se pudieron cargar los resultados.");
+        console.error("Error al cargar el resultado:", err);
+        setError("No se pudo cargar el resultado.");
       } finally {
         setLoading(false);
       }
     };
 
-    loadResults();
-  }, [userId]);
+    loadResultado();
+  }, [resultadoId, user]);
 
-  const getPercentage = (result) => {
-    const percentage = Number(result?.percentage ?? 0);
+  const getResultStatus = (data) =>
+    Number(data?.puntaje ?? 0) >= 60 ? "Aprobado" : "No aprobado";
 
-    if (percentage <= 1) {
-      return Math.round(percentage * 100);
-    }
-
-    return Math.round(percentage);
-  };
-
-  const getCorrectAnswers = (result) =>
-    Number(result?.correctAnswers ?? 0);
-
-  const getIncorrectAnswers = (result) =>
-    Number(
-      result?.incorrectAnswers ??
-        Math.max(
-          0,
-          Number(result?.totalQuestions ?? 0) -
-            getCorrectAnswers(result)
-        )
-    );
-
-  const getTotalQuestions = (result) =>
-    Number(result?.totalQuestions ?? 0);
-
-  const getResultStatus = (result) => {
-    if (result?.passed === true) {
-      return "Aprobado";
-    }
-
-    if (result?.passed === false) {
-      return "No aprobado";
-    }
-
-    return getPercentage(result) >= 60 ? "Aprobado" : "No aprobado";
-  };
-
-  const getStatusClass = (result) => {
-    return getResultStatus(result) === "Aprobado"
+  const getStatusClass = (data) =>
+    getResultStatus(data) === "Aprobado"
       ? "results-status--passed"
       : "results-status--failed";
-  };
 
   const formatDate = (date) => {
     if (!date) return "Sin fecha";
@@ -109,21 +80,16 @@ const Results = ({ userId }) => {
     }
   };
 
-  const getAreaName = (result) => {
-    return (
-      result?.areaName ||
-      result?.area ||
-      result?.areaId ||
-      "Área general"
-    );
-  };
-
   const handleGoHome = () => {
-    navigate("/");
+    navigate("/inicio");
   };
 
   const handleRetry = () => {
-    navigate("/quiz");
+    navigate("/practica");
+  };
+
+  const handleFeedback = () => {
+    navigate(`/resultados/${resultadoId}/retroalimentacion`);
   };
 
   if (loading) {
@@ -157,7 +123,7 @@ const Results = ({ userId }) => {
     );
   }
 
-  if (results.length === 0) {
+  if (!resultado) {
     return (
       <section className="results">
         <div className="results-empty">
@@ -182,12 +148,8 @@ const Results = ({ userId }) => {
     );
   }
 
-  const latestResult = results[0];
-
-  const latestPercentage = getPercentage(latestResult);
-  const latestCorrect = getCorrectAnswers(latestResult);
-  const latestIncorrect = getIncorrectAnswers(latestResult);
-  const latestTotal = getTotalQuestions(latestResult);
+  const totalPreguntas =
+    (resultado.respuestasCorrectas || 0) + (resultado.respuestasIncorrectas || 0);
 
   return (
     <section className="results">
@@ -214,7 +176,7 @@ const Results = ({ userId }) => {
           <div className="results-score">
             <div className="results-score-circle">
               <span className="results-score-value">
-                {latestPercentage}%
+                {resultado.puntaje}%
               </span>
 
               <span className="results-score-label">
@@ -225,21 +187,15 @@ const Results = ({ userId }) => {
 
           <div className="results-main-info">
             <span
-              className={`results-status ${getStatusClass(
-                latestResult
-              )}`}
+              className={`results-status ${getStatusClass(resultado)}`}
             >
-              {getResultStatus(latestResult)}
+              {getResultStatus(resultado)}
             </span>
 
             <h2>Tu resultado</h2>
 
-            <p className="results-area">
-              Área: {getAreaName(latestResult)}
-            </p>
-
             <p className="results-date">
-              {formatDate(latestResult.createdAt)}
+              {formatDate(resultado.fecha)}
             </p>
           </div>
 
@@ -252,7 +208,7 @@ const Results = ({ userId }) => {
             <span className="results-stat-icon">📝</span>
 
             <div>
-              <strong>{latestTotal}</strong>
+              <strong>{totalPreguntas}</strong>
               <span>Preguntas</span>
             </div>
           </div>
@@ -261,7 +217,7 @@ const Results = ({ userId }) => {
             <span className="results-stat-icon">✓</span>
 
             <div>
-              <strong>{latestCorrect}</strong>
+              <strong>{resultado.respuestasCorrectas || 0}</strong>
               <span>Correctas</span>
             </div>
           </div>
@@ -270,88 +226,12 @@ const Results = ({ userId }) => {
             <span className="results-stat-icon">✕</span>
 
             <div>
-              <strong>{latestIncorrect}</strong>
+              <strong>{resultado.respuestasIncorrectas || 0}</strong>
               <span>Incorrectas</span>
             </div>
           </div>
 
         </div>
-
-        {/* Historial */}
-        <section className="results-history">
-
-          <div className="results-section-header">
-            <div>
-              <h2>Historial de resultados</h2>
-              <p>
-                Consulta tus cuestionarios anteriores.
-              </p>
-            </div>
-          </div>
-
-          <div className="results-table-wrapper">
-            <table className="results-table">
-              <thead>
-                <tr>
-                  <th>Área</th>
-                  <th>Preguntas</th>
-                  <th>Correctas</th>
-                  <th>Puntaje</th>
-                  <th>Estado</th>
-                  <th>Fecha</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {results.map((result, index) => {
-                  const percentage = getPercentage(result);
-
-                  return (
-                    <tr key={result.id || index}>
-
-                      <td>
-                        <span className="results-area-name">
-                          {getAreaName(result)}
-                        </span>
-                      </td>
-
-                      <td>
-                        {getTotalQuestions(result)}
-                      </td>
-
-                      <td>
-                        <span className="results-correct">
-                          {getCorrectAnswers(result)}
-                        </span>
-                      </td>
-
-                      <td>
-                        <strong>
-                          {percentage}%
-                        </strong>
-                      </td>
-
-                      <td>
-                        <span
-                          className={`results-status ${getStatusClass(
-                            result
-                          )}`}
-                        >
-                          {getResultStatus(result)}
-                        </span>
-                      </td>
-
-                      <td>
-                        {formatDate(result.createdAt)}
-                      </td>
-
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </section>
 
         {/* Botones */}
         <div className="results-actions">
@@ -362,6 +242,14 @@ const Results = ({ userId }) => {
             onClick={handleGoHome}
           >
             Volver al inicio
+          </button>
+
+          <button
+            type="button"
+            className="results-button results-button--secondary"
+            onClick={handleFeedback}
+          >
+            Ver retroalimentación
           </button>
 
           <button

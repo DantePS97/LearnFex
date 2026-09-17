@@ -1,114 +1,53 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./Practice.css";
 
-const areas = [
-  "Todas",
-  "Matemáticas",
-  "Inglés",
-  "Lectura Crítica",
-  "C. Sociales",
-  "C. Naturales",
-];
-
-const topics = [
-  {
-    id: 1,
-    name: "Álgebra y funciones",
-    description: "20 preguntas • Medio",
-    area: "Matemáticas",
-    progress: 60,
-    icon: "∑",
-  },
-  {
-    id: 2,
-    name: "Trigonometría",
-    description: "15 preguntas • Fácil",
-    area: "Matemáticas",
-    progress: 45,
-    icon: "△",
-  },
-  {
-    id: 3,
-    name: "Biología celular",
-    description: "20 preguntas • Fácil",
-    area: "C. Naturales",
-    progress: 35,
-    icon: "🧬",
-  },
-  {
-    id: 4,
-    name: "Reading comprehension",
-    description: "12 preguntas • Medio",
-    area: "Inglés",
-    progress: 50,
-    icon: "A",
-  },
-  {
-    id: 5,
-    name: "Estadística y probabilidad",
-    description: "14 preguntas • Fácil",
-    area: "Matemáticas",
-    progress: 70,
-    icon: "▥",
-  },
-  {
-    id: 6,
-    name: "Física: cinemática",
-    description: "20 preguntas • Medio",
-    area: "C. Naturales",
-    progress: 25,
-    icon: "⚡",
-  },
-];
-
-const recommendedPractices = [
-  {
-    id: 1,
-    title: "Simulacro de Matemáticas",
-    questions: 20,
-    difficulty: "Medio",
-    type: "medium",
-    icon: "∑",
-  },
-  {
-    id: 2,
-    title: "Comprensión de lectura",
-    questions: 15,
-    difficulty: "Fácil",
-    type: "easy",
-    icon: "A",
-  },
-  {
-    id: 3,
-    title: "Ciencias Naturales",
-    questions: 20,
-    difficulty: "Difícil",
-    type: "hard",
-    icon: "🧬",
-  },
-];
+import { getAllAreas } from "../../../repositories/areaRepository";
 
 function Practice() {
+  const navigate = useNavigate();
+
+  const [areas, setAreas] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activeArea, setActiveArea] = useState("Todas");
   const [search, setSearch] = useState("");
 
-  const filteredTopics = topics.filter((topic) => {
-    const matchesArea =
-      activeArea === "Todas" || topic.area === activeArea;
+  useEffect(() => {
+    const cargarAreas = async () => {
+      try {
+        setLoading(true);
 
-    const matchesSearch = topic.name
+        const data = await getAllAreas();
+
+        setAreas(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error("Error al cargar las áreas:", error);
+        setAreas([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    cargarAreas();
+  }, []);
+
+  const filteredAreas = areas.filter((area) => {
+    const matchesArea =
+      activeArea === "Todas" || area.nombre === activeArea;
+
+    const matchesSearch = (area.nombre || "")
       .toLowerCase()
       .includes(search.toLowerCase());
 
     return matchesArea && matchesSearch;
   });
 
-  const handlePractice = (topic) => {
-    console.log("Iniciando práctica:", topic);
+  const handlePractice = (area) => {
+    navigate("/practica/cuestionario", { state: { areaId: area.id } });
   };
 
-  const handleNavigation = (section) => {
-    console.log("Navegando a:", section);
+  const handleNavigation = (path) => {
+    navigate(path);
   };
 
   return (
@@ -129,7 +68,7 @@ function Practice() {
             <button
               type="button"
               className="practice-button practice-button-secondary"
-              onClick={() => console.log("Abrir historial")}
+              onClick={() => navigate("/estadisticas")}
             >
               Historial
             </button>
@@ -137,11 +76,8 @@ function Practice() {
             <button
               type="button"
               className="practice-button practice-button-primary"
-              onClick={() =>
-                handlePractice({
-                  name: "Nueva práctica",
-                })
-              }
+              disabled={filteredAreas.length === 0}
+              onClick={() => filteredAreas[0] && handlePractice(filteredAreas[0])}
             >
               + Nueva práctica
             </button>
@@ -153,7 +89,7 @@ function Practice() {
           <input
             type="text"
             value={search}
-            placeholder="Buscar tema..."
+            placeholder="Buscar área..."
             onChange={(event) => setSearch(event.target.value)}
           />
 
@@ -164,72 +100,36 @@ function Practice() {
 
         {/* FILTROS */}
         <div className="practice-filters">
+          <button
+            type="button"
+            className={`practice-filter ${
+              activeArea === "Todas" ? "active" : ""
+            }`}
+            onClick={() => setActiveArea("Todas")}
+          >
+            Todas
+          </button>
+
           {areas.map((area) => (
             <button
               type="button"
-              key={area}
+              key={area.id}
               className={`practice-filter ${
-                activeArea === area ? "active" : ""
+                activeArea === area.nombre ? "active" : ""
               }`}
-              onClick={() => setActiveArea(area)}
+              onClick={() => setActiveArea(area.nombre)}
             >
-              {area}
+              {area.nombre}
             </button>
           ))}
         </div>
 
-        {/* PRÁCTICA DESTACADA */}
-        <section className="practice-featured">
-          <div className="practice-featured-content">
-
-            <span className="practice-featured-label">
-              CONTINUAR
-            </span>
-
-            <h2>Álgebra y funciones</h2>
-
-            <p>
-              12 de 20 preguntas • Matemáticas
-            </p>
-
-            <div className="practice-featured-progress">
-              <div className="practice-progress-info">
-                <span>Progreso</span>
-                <span>60%</span>
-              </div>
-
-              <div className="practice-progress-bar">
-                <div
-                  className="practice-progress-fill"
-                  style={{ width: "60%" }}
-                />
-              </div>
-            </div>
-
-          </div>
-
-          <div className="practice-featured-action">
-            <button
-              type="button"
-              className="practice-button practice-button-primary"
-              onClick={() =>
-                handlePractice({
-                  id: 1,
-                  name: "Álgebra y funciones",
-                })
-              }
-            >
-              Continuar →
-            </button>
-          </div>
-        </section>
-
-        {/* TEMAS DISPONIBLES */}
+        {/* ÁREAS DISPONIBLES */}
         <section className="practice-section">
 
           <div className="practice-section-header">
             <h2 className="practice-section-title">
-              Temas disponibles
+              Áreas disponibles
             </h2>
 
             <button
@@ -237,116 +137,56 @@ function Practice() {
               className="practice-section-link"
               onClick={() => setActiveArea("Todas")}
             >
-              Ver todos
+              Ver todas
             </button>
           </div>
 
-          <div className="practice-topics-grid">
-            {filteredTopics.map((topic) => (
-              <article
-                key={topic.id}
-                className="practice-topic-card"
-                onClick={() => handlePractice(topic)}
-              >
-                <div className="practice-topic-icon">
-                  {topic.icon}
-                </div>
-
-                <div className="practice-topic-info">
-                  <h3 className="practice-topic-title">
-                    {topic.name}
-                  </h3>
-
-                  <p className="practice-topic-description">
-                    {topic.description}
-                  </p>
-
-                  <div className="practice-topic-progress">
-                    <div className="practice-topic-progress-bar">
-                      <div
-                        className="practice-topic-progress-fill"
-                        style={{
-                          width: `${topic.progress}%`,
-                        }}
-                      />
-                    </div>
-
-                    <div className="practice-topic-percent">
-                      {topic.progress}% completado
-                    </div>
-                  </div>
-                </div>
-
-                <span className="practice-topic-arrow">
-                  →
-                </span>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        {/* PRÁCTICAS RECOMENDADAS */}
-        <section className="practice-section">
-
-          <div className="practice-section-header">
-            <h2 className="practice-section-title">
-              Prácticas recomendadas
-            </h2>
-          </div>
-
-          <div className="practice-list">
-            {recommendedPractices.map((practice) => (
-              <article
-                key={practice.id}
-                className="practice-item"
-              >
-                <div className="practice-item-icon">
-                  {practice.icon}
-                </div>
-
-                <div className="practice-item-content">
-                  <h3 className="practice-item-title">
-                    {practice.title}
-                  </h3>
-
-                  <div className="practice-item-meta">
-                    <span>
-                      {practice.questions} preguntas
-                    </span>
-
-                    <span>•</span>
-
-                    <span
-                      className={`practice-badge practice-badge-${practice.type}`}
-                    >
-                      {practice.difficulty}
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  className="practice-button practice-button-primary"
-                  onClick={() => handlePractice(practice)}
+          {loading ? (
+            <div className="practice-empty">
+              <p>Cargando áreas...</p>
+            </div>
+          ) : (
+            <div className="practice-topics-grid">
+              {filteredAreas.map((area) => (
+                <article
+                  key={area.id}
+                  className="practice-topic-card"
+                  onClick={() => handlePractice(area)}
                 >
-                  Practicar
-                </button>
-              </article>
-            ))}
-          </div>
+                  <div className="practice-topic-icon">
+                    {(area.nombre || "?").charAt(0)}
+                  </div>
+
+                  <div className="practice-topic-info">
+                    <h3 className="practice-topic-title">
+                      {area.nombre}
+                    </h3>
+
+                    <p className="practice-topic-description">
+                      {area.descripcion || `${area.numPreguntas || 0} preguntas`}
+                    </p>
+                  </div>
+
+                  <span className="practice-topic-arrow">
+                    →
+                  </span>
+                </article>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* SIN RESULTADOS */}
-        {filteredTopics.length === 0 && (
+        {!loading && filteredAreas.length === 0 && (
           <div className="practice-empty">
             <div className="practice-empty-icon">
               🔍
             </div>
 
-            <h3>No encontramos temas</h3>
+            <h3>No encontramos áreas</h3>
 
             <p>
-              Intenta buscar otro tema o selecciona
+              Intenta buscar otra área o selecciona
               una categoría diferente.
             </p>
           </div>
@@ -360,7 +200,7 @@ function Practice() {
           <button
             type="button"
             className="practice-nav-item"
-            onClick={() => handleNavigation("Inicio")}
+            onClick={() => handleNavigation("/inicio")}
           >
             <span>⌂</span>
             <span>Inicio</span>
@@ -369,7 +209,7 @@ function Practice() {
           <button
             type="button"
             className="practice-nav-item active"
-            onClick={() => handleNavigation("Práctica")}
+            onClick={() => handleNavigation("/practica")}
           >
             <span>▱</span>
             <span>Práctica</span>
@@ -378,7 +218,7 @@ function Practice() {
           <button
             type="button"
             className="practice-nav-item"
-            onClick={() => handleNavigation("Estadísticas")}
+            onClick={() => handleNavigation("/estadisticas")}
           >
             <span>▥</span>
             <span>Estadísticas</span>
@@ -387,7 +227,7 @@ function Practice() {
           <button
             type="button"
             className="practice-nav-item"
-            onClick={() => handleNavigation("Ranking")}
+            onClick={() => handleNavigation("/ranking")}
           >
             <span>♜</span>
             <span>Ranking</span>
@@ -396,7 +236,7 @@ function Practice() {
           <button
             type="button"
             className="practice-nav-item"
-            onClick={() => handleNavigation("Perfil")}
+            onClick={() => handleNavigation("/perfil")}
           >
             <span>●</span>
             <span>Perfil</span>

@@ -5,8 +5,12 @@ import Register from "../pages/auth/Register/Register";
 import ForgotPassword from "../pages/auth/ForgotPassword/Forgotpassword";
 import Home from "../pages/student/Home/Home";
 import Practice from "../pages/student/Practice/Practice";
+import Quiz from "../pages/student/Quiz/Quiz";
+import Results from "../pages/student/Results/Results";
+import Feedback from "../pages/student/Feedback/Feedback";
 import Statistics from "../pages/student/Statistics/Statistics";
 import Ranking from "../pages/student/Ranking/Ranking";
+import Achievements from "../pages/student/Achievements/Achievements";
 import Profile from "../pages/student/Profile/Profile";
 import Dashboard from "../pages/admin/Dashboard/Dashboard";
 import PrivateRoutes from "./PrivateRoutes";
@@ -26,9 +30,20 @@ function AppRoutes() {
 
 				<Route path="/practica" element={<Practice />} />
 
+				<Route path="/practica/cuestionario" element={<Quiz />} />
+
+				<Route path="/resultados/:resultadoId" element={<Results />} />
+
+				<Route
+					path="/resultados/:resultadoId/retroalimentacion"
+					element={<Feedback />}
+				/>
+
 				<Route path="/estadisticas" element={<Statistics />} />
 
 				<Route path="/ranking" element={<Ranking />} />
+
+				<Route path="/logros" element={<Achievements />} />
 
 				<Route path="/perfil" element={<Profile />} />
 			</Route>

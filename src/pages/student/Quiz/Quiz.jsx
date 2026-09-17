@@ -1,153 +1,182 @@
-import React, { useEffect, useState } from "react";
-import "./QuizScreen.css";
+import React, { useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import "./Quiz.css";
 
-const questions = [
-  {
-    id: 1,
-    subject: "Matemáticas",
-    question:
-      "¿Cuál de las siguientes opciones representa la factorización correcta de x² − 9?",
-    options: [
-      "(x + 3)(x − 3)",
-      "(x + 9)(x − 1)",
-      "(x − 3)(x − 3)",
-      "(x + 3)²",
-    ],
-    correctAnswer: 0,
-  },
-  {
-    id: 2,
-    subject: "Matemáticas",
-    question: "Si 2x + 6 = 14, ¿cuál es el valor de x?",
-    options: ["2", "3", "4", "5"],
-    correctAnswer: 2,
-  },
-  {
-    id: 3,
-    subject: "Lectura Crítica",
-    question:
-      "Según el texto, ¿cuál es la idea principal del autor?",
-    options: [
-      "Presentar una opinión personal.",
-      "Explicar las causas de un fenómeno.",
-      "Describir un lugar.",
-      "Comparar dos situaciones.",
-    ],
-    correctAnswer: 1,
-  },
-  {
-    id: 4,
-    subject: "Ciencias Naturales",
-    question:
-      "¿Cuál es la principal función de la fotosíntesis?",
-    options: [
-      "Producir energía a partir de alimentos.",
-      "Transformar energía luminosa en energía química.",
-      "Eliminar el oxígeno del ambiente.",
-      "Producir únicamente agua.",
-    ],
-    correctAnswer: 1,
-  },
-  {
-    id: 5,
-    subject: "Inglés",
-    question:
-      'Choose the correct option: "She ___ to school every day."',
-    options: ["go", "going", "goes", "gone"],
-    correctAnswer: 2,
-  },
-];
+import { useAuth } from "../../../hooks/useAuth";
+import { useTimer } from "../../../hooks/useTimer";
+import { getAllAreas, getAreaById } from "../../../repositories/areaRepository";
+import { obtenerPreguntas } from "../../../services/questionService";
+import { armarCuestionario, armarSimulacro } from "../../../services/quizService";
+import { calificarPrueba } from "../../../services/resultService";
+import QuestionCard from "../../../components/QuestionCard/QuestionCard";
 
-const TOTAL_QUESTIONS = 100;
-const INITIAL_TIME = 60 * 60 + 29;
+const CANTIDAD_POR_DEFECTO = 10;
+const DURACION_POR_DEFECTO_MINUTOS = 20;
 
-function formatTime(seconds) {
-  const minutes = Math.floor(seconds / 60);
-  const secs = seconds % 60;
+export default function Quiz() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
-  return `${String(minutes).padStart(2, "0")}:${String(secs).padStart(
-    2,
-    "0"
-  )}`;
-}
+  const areaId = location.state?.areaId ?? null;
+  const cantidad = location.state?.cantidad ?? CANTIDAD_POR_DEFECTO;
 
-export default function QuizScreen() {
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState({});
-  const [markedQuestions, setMarkedQuestions] = useState([]);
-  const [timeLeft, setTimeLeft] = useState(INITIAL_TIME);
+  const [cuestionarioId, setCuestionarioId] = useState(null);
+  const [areaNombre, setAreaNombre] = useState("");
+  const [preguntas, setPreguntas] = useState([]);
+  const [duracion, setDuracion] = useState(0);
+  const [respuestas, setRespuestas] = useState({});
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [enviando, setEnviando] = useState(false);
 
-  const question = questions[currentQuestion];
+  const finalizadoRef = useRef(false);
+  const preparadoRef = useRef(false);
 
-  const selectedAnswer = answers[currentQuestion];
+  const finalizarCuestionario = async (tiempoRestante) => {
+    if (finalizadoRef.current) return;
 
-  /*
-   * Temporizador
-   */
+    finalizadoRef.current = true;
+    setEnviando(true);
+
+    try {
+      const respuestasEstudiante = preguntas.map((pregunta) => ({
+        preguntaId: pregunta.id,
+        respuestaSeleccionada: respuestas[pregunta.id] ?? null,
+      }));
+
+      const tiempoEmpleado = Math.max(duracion - tiempoRestante, 0);
+
+      const resultado = await calificarPrueba(
+        cuestionarioId,
+        respuestasEstudiante,
+        user.uid,
+        tiempoEmpleado
+      );
+
+      navigate(`/resultados/${resultado.resultadoId}`);
+    } catch (err) {
+      console.error("Error al calificar la prueba:", err);
+      setError("No se pudo calificar el cuestionario.");
+      finalizadoRef.current = false;
+      setEnviando(false);
+    }
+  };
+
+  const { time, formatted, start, reset } = useTimer({
+    initialTime: duracion,
+    countdown: true,
+    autoStart: false,
+    onEnd: () => finalizarCuestionario(0),
+  });
+
   useEffect(() => {
-    if (timeLeft <= 0) return;
+    if (preparadoRef.current) return;
+    preparadoRef.current = true;
 
-    const timer = setInterval(() => {
-      setTimeLeft((previous) => previous - 1);
-    }, 1000);
+    const cargarCuestionario = async () => {
+      try {
+        setLoading(true);
+        setError("");
 
-    return () => clearInterval(timer);
-  }, [timeLeft]);
+        if (areaId) {
+          const [idCuestionario, preguntasArea, area] = await Promise.all([
+            armarCuestionario(areaId, cantidad),
+            obtenerPreguntas(areaId, null, cantidad),
+            getAreaById(areaId),
+          ]);
 
-  /*
-   * Seleccionar respuesta
-   */
-  const handleSelectAnswer = (index) => {
-    setAnswers((previous) => ({
-      ...previous,
-      [currentQuestion]: index,
+          setCuestionarioId(idCuestionario);
+          setPreguntas(preguntasArea);
+          setAreaNombre(area?.nombre ?? "");
+          setDuracion((area?.tiempoLimite || DURACION_POR_DEFECTO_MINUTOS) * 60);
+        } else {
+          const idCuestionario = await armarSimulacro();
+          const areas = await getAllAreas();
+
+          const preguntasSimulacro = (
+            await Promise.all(
+              areas.map((area) => obtenerPreguntas(area.id, null, area.numPreguntas))
+            )
+          ).flat();
+
+          const duracionTotal = areas.reduce(
+            (total, area) => total + (area.tiempoLimite || 0),
+            0
+          );
+
+          setCuestionarioId(idCuestionario);
+          setPreguntas(preguntasSimulacro);
+          setAreaNombre("Simulacro general");
+          setDuracion((duracionTotal || DURACION_POR_DEFECTO_MINUTOS) * 60);
+        }
+      } catch (err) {
+        console.error("Error al preparar el cuestionario:", err);
+        setError("No se pudo preparar el cuestionario.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    cargarCuestionario();
+  }, [areaId, cantidad]);
+
+  useEffect(() => {
+    if (!loading && duracion > 0) {
+      reset();
+      start();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, duracion]);
+
+  const pregunta = preguntas[currentIndex];
+  const seleccionada = pregunta ? respuestas[pregunta.id] ?? null : null;
+  const esUltima = currentIndex >= preguntas.length - 1;
+
+  const handleSeleccionar = (opcionId) => {
+    if (!pregunta) return;
+
+    setRespuestas((previas) => ({
+      ...previas,
+      [pregunta.id]: opcionId,
     }));
   };
 
-  /*
-   * Marcar pregunta
-   */
-  const toggleMarkQuestion = () => {
-    setMarkedQuestions((previous) => {
-      if (previous.includes(currentQuestion)) {
-        return previous.filter(
-          (item) => item !== currentQuestion
-        );
-      }
-
-      return [...previous, currentQuestion];
-    });
-  };
-
-  /*
-   * Pregunta anterior
-   */
   const handlePrevious = () => {
-    if (currentQuestion === 0) return;
+    if (currentIndex === 0) return;
 
-    setCurrentQuestion((previous) => previous - 1);
+    setCurrentIndex((previo) => previo - 1);
   };
 
-  /*
-   * Pregunta siguiente
-   */
   const handleNext = () => {
-    if (currentQuestion >= questions.length - 1) return;
+    if (esUltima) return;
 
-    setCurrentQuestion((previous) => previous + 1);
+    setCurrentIndex((previo) => previo + 1);
   };
 
-  /*
-   * Ir a una pregunta
-   */
   const goToQuestion = (index) => {
-    setCurrentQuestion(index);
+    setCurrentIndex(index);
   };
+
+  if (loading) {
+    return (
+      <div className="quiz-screen quiz-screen--centrado">
+        <p>Preparando cuestionario...</p>
+      </div>
+    );
+  }
+
+  if (error || !pregunta) {
+    return (
+      <div className="quiz-screen quiz-screen--centrado">
+        <p>{error || "No hay preguntas disponibles."}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="quiz-screen">
-
-      {/* ================= HEADER ================= */}
 
       <header className="quiz-header">
         <div className="quiz-header-content">
@@ -160,9 +189,7 @@ export default function QuizScreen() {
             <div>
               <h1>LearnFex</h1>
 
-              <span>
-                Simulacro Saber 11
-              </span>
+              <span>{areaNombre}</span>
             </div>
           </div>
 
@@ -172,137 +199,62 @@ export default function QuizScreen() {
               <span>Pregunta</span>
 
               <strong>
-                {currentQuestion + 1} de {TOTAL_QUESTIONS}
+                {currentIndex + 1} de {preguntas.length}
               </strong>
             </div>
 
             <div className="quiz-timer">
               <span>⏱</span>
 
-              <strong>
-                {formatTime(timeLeft)}
-              </strong>
+              <strong>{formatted}</strong>
             </div>
 
           </div>
         </div>
       </header>
 
-      {/* ================= CONTENIDO ================= */}
-
       <main className="quiz-container">
 
-        {/* Información superior */}
+        <QuestionCard
+          numero={currentIndex + 1}
+          total={preguntas.length}
+          enunciado={pregunta.enunciado}
+          opciones={pregunta.opciones}
+          seleccionada={seleccionada}
+          onSeleccionar={handleSeleccionar}
+        />
 
-        <div className="quiz-top-info">
+        <div className="question-controls">
 
-          <span className="subject-badge">
-            {question.subject}
-          </span>
+          <button
+            type="button"
+            className="previous-button"
+            onClick={handlePrevious}
+            disabled={currentIndex === 0}
+          >
+            ← Anterior
+          </button>
 
-          <span className="top-question-number">
-            Pregunta {currentQuestion + 1} de {TOTAL_QUESTIONS}
-          </span>
-
-        </div>
-
-        {/* ================= PREGUNTA ================= */}
-
-        <section className="question-card">
-
-          <div className="question-header">
-
-            <div>
-              <p className="question-instruction">
-                Selecciona una sola respuesta
-              </p>
-
-              <h2>
-                {question.question}
-              </h2>
-            </div>
-
+          {esUltima ? (
             <button
-              className={`mark-button ${
-                markedQuestions.includes(currentQuestion)
-                  ? "marked"
-                  : ""
-              }`}
-              onClick={toggleMarkQuestion}
+              type="button"
+              className="next-button"
+              onClick={() => finalizarCuestionario(time)}
+              disabled={enviando}
             >
-              {markedQuestions.includes(currentQuestion)
-                ? "★ Marcada"
-                : "☆ Marcar"}
+              {enviando ? "Enviando..." : "Finalizar"}
             </button>
-
-          </div>
-
-          {/* ================= OPCIONES ================= */}
-
-          <div className="options-container">
-
-            {question.options.map((option, index) => {
-
-              const selected = selectedAnswer === index;
-
-              return (
-                <button
-                  key={index}
-                  className={`answer-option ${
-                    selected ? "selected" : ""
-                  }`}
-                  onClick={() =>
-                    handleSelectAnswer(index)
-                  }
-                >
-
-                  <span className="option-letter">
-                    {String.fromCharCode(65 + index)}
-                  </span>
-
-                  <span className="option-text">
-                    {option}
-                  </span>
-
-                  <span className="radio-button">
-                    {selected && (
-                      <span className="radio-selected" />
-                    )}
-                  </span>
-
-                </button>
-              );
-            })}
-
-          </div>
-
-          {/* ================= BOTONES ================= */}
-
-          <div className="question-controls">
-
+          ) : (
             <button
-              className="previous-button"
-              onClick={handlePrevious}
-              disabled={currentQuestion === 0}
-            >
-              ← Anterior
-            </button>
-
-            <button
+              type="button"
               className="next-button"
               onClick={handleNext}
-              disabled={
-                currentQuestion >= questions.length - 1
-              }
             >
               Siguiente →
             </button>
+          )}
 
-          </div>
-
-        </section>
-
-        {/* ================= NAVEGACIÓN ================= */}
+        </div>
 
         <section className="question-navigation">
 
@@ -320,11 +272,6 @@ export default function QuizScreen() {
               </span>
 
               <span>
-                <i className="legend-dot marked-dot" />
-                Marcada
-              </span>
-
-              <span>
                 <i className="legend-dot unanswered" />
                 Sin responder
               </span>
@@ -335,57 +282,33 @@ export default function QuizScreen() {
 
           <div className="question-numbers">
 
-            {questions.map((item, index) => {
-
-              const answered =
-                answers[index] !== undefined;
-
-              const marked =
-                markedQuestions.includes(index);
-
-              const current =
-                currentQuestion === index;
+            {preguntas.map((item, index) => {
+              const answered = respuestas[item.id] !== undefined && respuestas[item.id] !== null;
+              const current = currentIndex === index;
 
               return (
                 <button
                   key={item.id}
+                  type="button"
                   onClick={() => goToQuestion(index)}
-                  className={`
-                    question-number
-                    ${current ? "current" : ""}
-                    ${answered ? "answered" : ""}
-                  `}
+                  className={`question-number ${current ? "current" : ""} ${
+                    answered ? "answered" : ""
+                  }`}
                 >
                   {index + 1}
-
-                  {marked && (
-                    <span className="marked-indicator" />
-                  )}
                 </button>
               );
             })}
-
-            <span className="more-questions">
-              ...
-            </span>
-
-            <button className="question-number">
-              100
-            </button>
 
           </div>
 
         </section>
 
-        {/* ================= TIMER MOBILE ================= */}
-
         <div className="mobile-timer">
 
           <span>⏱</span>
 
-          <strong>
-            {formatTime(timeLeft)}
-          </strong>
+          <strong>{formatted}</strong>
 
         </div>
 

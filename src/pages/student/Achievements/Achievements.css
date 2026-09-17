@@ -79,3 +79,9 @@
   font-size: 12px;
   font-weight: bold;
 }
+
+/* Badge de bloqueado */
+.badge-locked {
+  background: rgba(255, 255, 255, 0.1);
+  color: #9ca3af;
+}

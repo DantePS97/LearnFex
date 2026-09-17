@@ -1,88 +1,53 @@
 .feedback-container {
-  background: linear-gradient(135deg, #1e1e2f, #2a2a40);
-  padding: 25px;
-  border-radius: 12px;
-  color: #ffffff;
-  width: 350px;
-  margin: 20px auto;
-  text-align: center;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-  font-family: Arial, sans-serif;
+	width: 100%;
+	max-width: 850px;
+	margin: 0 auto;
+	padding: var(--space-xl);
+
+	color: var(--color-text);
+	font-family: var(--font-family-base);
 }
 
-.feedback-container h2 {
-  margin-bottom: 15px;
+.feedback-header {
+	margin-bottom: var(--space-xl);
 }
 
-/* Área de texto */
-textarea {
-  width: 100%;
-  height: 80px;
-  border-radius: 8px;
-  border: none;
-  padding: 10px;
-  resize: none;
-  outline: none;
-  margin-bottom: 10px;
-  font-size: 14px;
+.feedback-header h1 {
+	margin: 0 0 6px;
+	font-size: var(--font-size-xl);
+	font-weight: 700;
 }
 
-/* Estrellas */
-.rating {
-  margin: 10px 0;
+.feedback-header p {
+	margin: 0;
+	color: var(--color-text-muted);
+	font-size: var(--font-size-sm);
 }
 
-.rating span {
-  font-size: 22px;
-  cursor: pointer;
-  opacity: 0.5;
-  transition:
-    transform 0.2s,
-    opacity 0.2s;
-}
-
-.rating span:hover {
-  transform: scale(1.2);
-}
-
-.rating .active {
-  opacity: 1;
-}
-
-/* Botón */
-button {
-  background: #4caf50;
-  border: none;
-  padding: 10px 15px;
-  border-radius: 6px;
-  color: white;
-  cursor: pointer;
-  margin-top: 10px;
-  transition: background 0.3s ease;
-}
-
-button:hover {
-  background: #66bb6a;
-}
-
-/* Lista de feedback */
 .feedback-list {
-  margin-top: 20px;
-  text-align: left;
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-lg);
+	margin-bottom: var(--space-xl);
 }
 
-.feedback-item {
-  background: rgba(255, 255, 255, 0.05);
-  padding: 10px;
-  border-radius: 8px;
-  margin-bottom: 10px;
+.feedback-back-button {
+	padding: 12px 20px;
+
+	border: none;
+	border-radius: var(--radius-md);
+
+	background: var(--color-primary-alt);
+	color: var(--color-text);
+
+	font-family: inherit;
+	font-size: var(--font-size-base);
+	font-weight: 600;
+
+	cursor: pointer;
+	transition: var(--transition-base);
 }
 
-.feedback-item p {
-  margin: 0 0 5px;
-  font-size: 14px;
-}
-
-.feedback-item span {
-  font-size: 16px;
+.feedback-back-button:hover {
+	opacity: 0.9;
 }

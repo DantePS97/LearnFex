@@ -54,7 +54,7 @@ const Home = () => {
   };
 
   const handleResults = () => {
-    navigate("/results");
+    navigate("/estadisticas");
   };
 
   const handleArea = (path) => {

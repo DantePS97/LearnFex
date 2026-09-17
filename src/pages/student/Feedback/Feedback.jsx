@@ -1,76 +1,107 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import "./Feedback.css";
 
+import { getResultadoConRespuestas } from "../../../repositories/resultRepository";
+import { getQuestionById } from "../../../repositories/questionRepository";
+import QuestionCard from "../../../components/QuestionCard/QuestionCard";
+
 const Feedback = () => {
-  const [message, setMessage] = useState("");
-  const [rating, setRating] = useState(0);
-  const [feedbacks, setFeedbacks] = useState([]);
+  const navigate = useNavigate();
+  const { resultadoId } = useParams();
 
-  // Cargar feedbacks guardados
+  const [preguntasRetroalimentacion, setPreguntasRetroalimentacion] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem("feedbacks")) || [];
-    setFeedbacks(stored);
-  }, []);
+    const cargarRetroalimentacion = async () => {
+      if (!resultadoId) {
+        setLoading(false);
+        return;
+      }
 
-  // Guardar nuevo feedback
-  const handleSubmit = (e) => {
-    e.preventDefault();
+      try {
+        setLoading(true);
+        setError("");
 
-    if (!message || rating === 0) return;
+        const resultado = await getResultadoConRespuestas(resultadoId);
 
-    const newFeedback = {
-      id: Date.now(),
-      message,
-      rating,
+        if (!resultado) {
+          setError("No se encontró el resultado solicitado.");
+          return;
+        }
+
+        const detalles = await Promise.all(
+          (resultado.respuestas || []).map(async (respuesta) => {
+            const pregunta = await getQuestionById(respuesta.preguntaId);
+
+            return { respuesta, pregunta };
+          })
+        );
+
+        setPreguntasRetroalimentacion(detalles.filter((item) => item.pregunta));
+      } catch (err) {
+        console.error("Error al cargar la retroalimentación:", err);
+        setError("No se pudo cargar la retroalimentación.");
+      } finally {
+        setLoading(false);
+      }
     };
 
-    const updated = [...feedbacks, newFeedback];
-    setFeedbacks(updated);
-    localStorage.setItem("feedbacks", JSON.stringify(updated));
+    cargarRetroalimentacion();
+  }, [resultadoId]);
 
-    setMessage("");
-    setRating(0);
+  const handleVolver = () => {
+    navigate(`/resultados/${resultadoId}`);
   };
+
+  if (loading) {
+    return (
+      <div className="feedback-container">
+        <p>Cargando retroalimentación...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="feedback-container">
+        <p>{error}</p>
+
+        <button type="button" className="feedback-back-button" onClick={handleVolver}>
+          Volver a resultados
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="feedback-container">
-      <h2>💬 Feedback</h2>
-
-      <form onSubmit={handleSubmit}>
-        <textarea
-          placeholder="Escribe tu opinión..."
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-        />
-
-        <div className="rating">
-          {[1, 2, 3, 4, 5].map((star) => (
-            <span
-              key={star}
-              className={star <= rating ? "active" : ""}
-              onClick={() => setRating(star)}
-            >
-              ⭐
-            </span>
-          ))}
-        </div>
-
-        <button type="submit">Enviar</button>
-      </form>
+      <header className="feedback-header">
+        <h1>Retroalimentación</h1>
+        <p>Revisa cada pregunta, tu respuesta y la correcta.</p>
+      </header>
 
       <div className="feedback-list">
-        <h3>Opiniones</h3>
-        {feedbacks.length === 0 ? (
-          <p>No hay comentarios aún.</p>
-        ) : (
-          feedbacks.map((fb) => (
-            <div key={fb.id} className="feedback-item">
-              <p>{fb.message}</p>
-              <span>{"⭐".repeat(fb.rating)}</span>
-            </div>
-          ))
-        )}
+        {preguntasRetroalimentacion.map(({ respuesta, pregunta }, index) => (
+          <QuestionCard
+            key={respuesta.id || pregunta.id}
+            numero={index + 1}
+            total={preguntasRetroalimentacion.length}
+            enunciado={pregunta.enunciado}
+            opciones={pregunta.opciones}
+            seleccionada={respuesta.respuestaSeleccionada}
+            modoRetroalimentacion
+            respuestaCorrecta={pregunta.respuestaCorrecta}
+            explicacion={pregunta.explicacion}
+          />
+        ))}
       </div>
+
+      <button type="button" className="feedback-back-button" onClick={handleVolver}>
+        Volver a resultados
+      </button>
     </div>
   );
 };

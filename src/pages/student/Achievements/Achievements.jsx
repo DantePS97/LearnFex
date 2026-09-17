@@ -1,78 +1,98 @@
 import React, { useEffect, useState } from "react";
 import "./Achievements.css";
 
-const defaultAchievements = [
-  {
-    id: 1,
-    title: "Primer paso",
-    description: "Completa tu primera actividad",
-    unlocked: false,
-  },
-  {
-    id: 2,
-    title: "Constante",
-    description: "Completa 5 actividades",
-    unlocked: false,
-  },
-  {
-    id: 3,
-    title: "Experto",
-    description: "Obtén más de 90 puntos",
-    unlocked: false,
-  },
-];
+import { useAuth } from "../../../hooks/useAuth";
+import {
+  getCatalogoLogros,
+  getLogrosDelUsuario,
+} from "../../../repositories/logroRepository";
+
+const formatFecha = (fecha) => {
+  if (!fecha) return "";
+
+  try {
+    const parsed = fecha?.seconds ? new Date(fecha.seconds * 1000) : new Date(fecha);
+
+    if (Number.isNaN(parsed.getTime())) return "";
+
+    return parsed.toLocaleDateString("es-CO", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  } catch {
+    return "";
+  }
+};
 
 const Achievements = () => {
-  const [achievements, setAchievements] = useState([]);
+  const { user } = useAuth();
 
-  // Cargar logros desde localStorage o usar los por defecto
+  const [catalogo, setCatalogo] = useState([]);
+  const [obtenidos, setObtenidos] = useState(new Map());
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem("achievements"));
-    if (stored) {
-      setAchievements(stored);
-    } else {
-      localStorage.setItem("achievements", JSON.stringify(defaultAchievements));
-      setAchievements(defaultAchievements);
-    }
-  }, []);
+    const cargarLogros = async () => {
+      if (!user?.uid) {
+        setLoading(false);
+        return;
+      }
 
-  // Guardar cambios en localStorage
-  useEffect(() => {
-    if (achievements.length > 0) {
-      localStorage.setItem("achievements", JSON.stringify(achievements));
-    }
-  }, [achievements]);
+      try {
+        setLoading(true);
 
-  // Función para desbloquear logro
-  const unlockAchievement = (id) => {
-    const updated = achievements.map((ach) =>
-      ach.id === id ? { ...ach, unlocked: true } : ach,
+        const [catalogoLogros, logrosUsuario] = await Promise.all([
+          getCatalogoLogros(),
+          getLogrosDelUsuario(user.uid),
+        ]);
+
+        setCatalogo(catalogoLogros);
+        setObtenidos(new Map(logrosUsuario.map((logro) => [logro.id, logro])));
+      } catch (error) {
+        console.error("Error al cargar los logros:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    cargarLogros();
+  }, [user]);
+
+  if (loading) {
+    return (
+      <div className="achievements-container">
+        <p>Cargando logros...</p>
+      </div>
     );
-    setAchievements(updated);
-  };
+  }
 
   return (
     <div className="achievements-container">
       <h2>🏅 Logros</h2>
 
       <div className="achievements-list">
-        {achievements.map((ach) => (
-          <div
-            key={ach.id}
-            className={`achievement ${ach.unlocked ? "unlocked" : "locked"}`}
-          >
-            <h3>{ach.title}</h3>
-            <p>{ach.description}</p>
+        {catalogo.map((logro) => {
+          const obtenido = obtenidos.get(logro.id);
 
-            {!ach.unlocked ? (
-              <button onClick={() => unlockAchievement(ach.id)}>
-                Desbloquear
-              </button>
-            ) : (
-              <span className="badge">✔ Desbloqueado</span>
-            )}
-          </div>
-        ))}
+          return (
+            <div
+              key={logro.id}
+              className={`achievement ${obtenido ? "unlocked" : "locked"}`}
+            >
+              <h3>{logro.titulo || logro.nombre}</h3>
+              <p>{logro.descripcion}</p>
+
+              {obtenido ? (
+                <span className="badge">
+                  ✔ Desbloqueado {formatFecha(obtenido.fechaObtenido)}
+                </span>
+              ) : (
+                <span className="badge badge-locked">Bloqueado</span>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

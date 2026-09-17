@@ -1,89 +1,38 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import resultService from "../../../services/resultService";
 import "./Statistics.css";
+
+import { useAuth } from "../../../hooks/useAuth";
+import { calcularEstadisticas } from "../../../services/statisticsService";
+import ProgressBar from "../../../components/ProgressBar/ProgressBar";
 
 const Estadistica = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  const [statistics, setStatistics] = useState({
-    average: 0,
-    accuracy: 0,
-    totalQuestions: 0,
-    completedPractices: 0,
-  });
-
-  const [progress, setProgress] = useState([]);
-  const [recentResults, setRecentResults] = useState([]);
+  const [porArea, setPorArea] = useState([]);
+  const [general, setGeneral] = useState({ totalPruebas: 0, promedioAciertos: 0 });
+  const [temasRecomendados, setTemasRecomendados] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // ---------------------------------------------------------
-  // ID DEL ESTUDIANTE
-  // ---------------------------------------------------------
-  const studentId = localStorage.getItem("studentId");
-
-  // ---------------------------------------------------------
-  // CARGAR ESTADÍSTICAS
-  // ---------------------------------------------------------
   useEffect(() => {
     const loadStatistics = async () => {
+      if (!user?.uid) {
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         setError("");
 
-        if (!studentId) {
-          throw new Error(
-            "No se encontró el estudiante actual."
-          );
-        }
+        const data = await calcularEstadisticas(user.uid);
 
-        // Estadísticas generales
-        const statisticsData =
-          await resultService.getStudentStatistics(studentId);
-
-        // Progreso por área
-        const progressData =
-          await resultService.getProgressByArea(studentId);
-
-        // Resultados recientes
-        const resultsData =
-          await resultService.getResultsByStudent(studentId);
-
-        setStatistics({
-          average:
-            statisticsData?.average ??
-            statisticsData?.promedio ??
-            0,
-
-          accuracy:
-            statisticsData?.accuracy ??
-            statisticsData?.precision ??
-            0,
-
-          totalQuestions:
-            statisticsData?.totalQuestions ??
-            statisticsData?.preguntasRespondidas ??
-            0,
-
-          completedPractices:
-            statisticsData?.completedPractices ??
-            statisticsData?.practicasCompletadas ??
-            0,
-        });
-
-        setProgress(
-          Array.isArray(progressData)
-            ? progressData
-            : progressData?.data || []
-        );
-
-        setRecentResults(
-          Array.isArray(resultsData)
-            ? resultsData.slice(0, 5)
-            : resultsData?.data?.slice(0, 5) || []
-        );
+        setPorArea(data.porArea || []);
+        setGeneral(data.general || { totalPruebas: 0, promedioAciertos: 0 });
+        setTemasRecomendados(data.temasRecomendados || []);
       } catch (err) {
         console.error(err);
         setError(err.message);
@@ -93,52 +42,8 @@ const Estadistica = () => {
     };
 
     loadStatistics();
-  }, [studentId]);
+  }, [user]);
 
-  // ---------------------------------------------------------
-  // FORMATEAR PORCENTAJE
-  // ---------------------------------------------------------
-  const formatPercentage = (value) => {
-    const number = Number(value) || 0;
-
-    return `${Math.round(number)}%`;
-  };
-
-  // ---------------------------------------------------------
-  // COLOR / ESTADO DE RESULTADO
-  // ---------------------------------------------------------
-  const getResultClass = (score) => {
-    const value = Number(score) || 0;
-
-    if (value >= 80) {
-      return "estadistica-result-good";
-    }
-
-    if (value >= 60) {
-      return "estadistica-result-medium";
-    }
-
-    return "estadistica-result-low";
-  };
-
-  // ---------------------------------------------------------
-  // NOMBRE DEL ÁREA
-  // ---------------------------------------------------------
-  const getAreaName = (area) => {
-    const areas = {
-      matematicas: "Matemáticas",
-      lenguaje: "Lenguaje",
-      ciencias: "Ciencias",
-      ingles: "Inglés",
-      matemáticas: "Matemáticas",
-    };
-
-    return areas[area?.toLowerCase()] || area || "General";
-  };
-
-  // ---------------------------------------------------------
-  // CARGANDO
-  // ---------------------------------------------------------
   if (loading) {
     return (
       <main className="estadistica-container">
@@ -151,9 +56,6 @@ const Estadistica = () => {
     );
   }
 
-  // ---------------------------------------------------------
-  // ERROR
-  // ---------------------------------------------------------
   if (error) {
     return (
       <main className="estadistica-container">
@@ -177,9 +79,6 @@ const Estadistica = () => {
     );
   }
 
-  // ---------------------------------------------------------
-  // INTERFAZ
-  // ---------------------------------------------------------
   return (
     <main className="estadistica-container">
 
@@ -202,7 +101,7 @@ const Estadistica = () => {
 
         <button
           className="estadistica-practice-button"
-          onClick={() => navigate("/practice")}
+          onClick={() => navigate("/practica")}
         >
           Practicar
         </button>
@@ -213,18 +112,17 @@ const Estadistica = () => {
       ====================================================== */}
       <section className="estadistica-cards">
 
-        {/* PROMEDIO */}
         <article className="estadistica-card">
           <div className="estadistica-card-top">
             <div className="estadistica-card-icon">
               %
             </div>
 
-            <span>Promedio</span>
+            <span>Promedio general</span>
           </div>
 
           <strong className="estadistica-card-value">
-            {formatPercentage(statistics.average)}
+            {general.promedioAciertos}%
           </strong>
 
           <p>
@@ -232,60 +130,21 @@ const Estadistica = () => {
           </p>
         </article>
 
-        {/* PRECISIÓN */}
-        <article className="estadistica-card">
-          <div className="estadistica-card-top">
-            <div className="estadistica-card-icon">
-              ✓
-            </div>
-
-            <span>Precisión</span>
-          </div>
-
-          <strong className="estadistica-card-value">
-            {formatPercentage(statistics.accuracy)}
-          </strong>
-
-          <p>
-            Respuestas correctas
-          </p>
-        </article>
-
-        {/* PREGUNTAS */}
-        <article className="estadistica-card">
-          <div className="estadistica-card-top">
-            <div className="estadistica-card-icon">
-              ?
-            </div>
-
-            <span>Preguntas</span>
-          </div>
-
-          <strong className="estadistica-card-value">
-            {statistics.totalQuestions}
-          </strong>
-
-          <p>
-            Preguntas respondidas
-          </p>
-        </article>
-
-        {/* PRÁCTICAS */}
         <article className="estadistica-card">
           <div className="estadistica-card-top">
             <div className="estadistica-card-icon">
               ★
             </div>
 
-            <span>Prácticas</span>
+            <span>Pruebas</span>
           </div>
 
           <strong className="estadistica-card-value">
-            {statistics.completedPractices}
+            {general.totalPruebas}
           </strong>
 
           <p>
-            Prácticas completadas
+            Pruebas realizadas
           </p>
         </article>
 
@@ -308,52 +167,26 @@ const Estadistica = () => {
 
         <div className="estadistica-progress-list">
 
-          {progress.length > 0 ? (
-            progress.map((item, index) => {
-              const value =
-                Number(
-                  item.progress ??
-                  item.average ??
-                  item.score ??
-                  item.porcentaje ??
-                  0
-                );
-
-              return (
-                <div
-                  className="estadistica-progress-item"
-                  key={item.id || index}
-                >
-                  <div className="estadistica-progress-info">
-
-                    <div>
-                      <strong>
-                        {getAreaName(
-                          item.area || item.nombre
-                        )}
-                      </strong>
-
-                      <span>
-                        {formatPercentage(value)}
-                      </span>
-                    </div>
-
-                    <div className="estadistica-progress-bar">
-                      <div
-                        className="estadistica-progress-fill"
-                        style={{
-                          width: `${Math.min(
-                            Math.max(value, 0),
-                            100
-                          )}%`,
-                        }}
-                      ></div>
-                    </div>
-
-                  </div>
-                </div>
-              );
-            })
+          {porArea.length > 0 ? (
+            porArea.map((area) => (
+              <div
+                className="estadistica-progress-item"
+                key={area.areaId}
+              >
+                <ProgressBar
+                  value={area.promedioAciertos}
+                  label={area.nombre}
+                  showPercentage
+                  variant={
+                    area.promedioAciertos >= 80
+                      ? "success"
+                      : area.promedioAciertos >= 60
+                        ? "primary"
+                        : "danger"
+                  }
+                />
+              </div>
+            ))
           ) : (
             <div className="estadistica-empty">
               <span>📚</span>
@@ -363,7 +196,7 @@ const Estadistica = () => {
               </p>
 
               <button
-                onClick={() => navigate("/practice")}
+                onClick={() => navigate("/practica")}
                 className="estadistica-button"
               >
                 Comenzar una práctica
@@ -375,86 +208,62 @@ const Estadistica = () => {
       </section>
 
       {/* =====================================================
-          RESULTADOS RECIENTES
+          TEMAS RECOMENDADOS
       ====================================================== */}
       <section className="estadistica-section">
 
         <div className="estadistica-section-header">
           <div>
-            <h2>Actividad reciente</h2>
+            <h2>Temas recomendados</h2>
 
             <p>
-              Tus últimas prácticas realizadas.
+              Áreas donde más puedes mejorar.
             </p>
           </div>
 
           <button
             className="estadistica-link-button"
-            onClick={() => navigate("/results")}
+            onClick={() => navigate("/practica")}
           >
-            Ver resultados
+            Practicar
           </button>
         </div>
 
         <div className="estadistica-results">
 
-          {recentResults.length > 0 ? (
-            recentResults.map((result, index) => {
-              const score =
-                Number(
-                  result.score ??
-                  result.puntaje ??
-                  result.result ??
-                  0
-                );
+          {temasRecomendados.length > 0 ? (
+            temasRecomendados.map((tema) => (
+              <article
+                className="estadistica-result"
+                key={tema}
+              >
+                <div className="estadistica-result-info">
 
-              return (
-                <article
-                  className="estadistica-result"
-                  key={result.id || index}
-                >
-                  <div className="estadistica-result-info">
-
-                    <div className="estadistica-result-icon">
-                      ✓
-                    </div>
-
-                    <div>
-                      <strong>
-                        {getAreaName(
-                          result.area
-                        )}
-                      </strong>
-
-                      <span>
-                        {result.topic ||
-                          result.tema ||
-                          "Práctica"}
-                      </span>
-                    </div>
-
+                  <div className="estadistica-result-icon">
+                    ✓
                   </div>
 
-                  <div className="estadistica-result-score">
-                    <span>
-                      Puntaje
-                    </span>
+                  <div>
+                    <strong>{tema}</strong>
 
-                    <strong
-                      className={getResultClass(score)}
-                    >
-                      {formatPercentage(score)}
-                    </strong>
+                    <span>Refuerza esta área</span>
                   </div>
-                </article>
-              );
-            })
+
+                </div>
+
+                <div className="estadistica-result-score">
+                  <strong className="estadistica-result-low">
+                    Recomendado
+                  </strong>
+                </div>
+              </article>
+            ))
           ) : (
             <div className="estadistica-empty">
               <span>📊</span>
 
               <p>
-                No hay actividades recientes.
+                No hay temas recomendados por ahora.
               </p>
             </div>
           )}
@@ -481,7 +290,7 @@ const Estadistica = () => {
         </div>
 
         <button
-          onClick={() => navigate("/practice")}
+          onClick={() => navigate("/practica")}
           className="estadistica-tip-button"
         >
           Empezar
