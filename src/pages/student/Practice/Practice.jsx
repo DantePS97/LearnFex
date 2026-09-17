@@ -46,10 +46,6 @@ function Practice() {
     navigate("/practica/cuestionario", { state: { areaId: area.id } });
   };
 
-  const handleNavigation = (path) => {
-    navigate(path);
-  };
-
   return (
     <div className="practice-page">
       <div className="practice-container">
@@ -192,58 +188,6 @@ function Practice() {
           </div>
         )}
       </div>
-
-      {/* NAVEGACIÓN INFERIOR */}
-      <nav className="practice-bottom-nav">
-        <div className="practice-nav-inner">
-
-          <button
-            type="button"
-            className="practice-nav-item"
-            onClick={() => handleNavigation("/inicio")}
-          >
-            <span>⌂</span>
-            <span>Inicio</span>
-          </button>
-
-          <button
-            type="button"
-            className="practice-nav-item active"
-            onClick={() => handleNavigation("/practica")}
-          >
-            <span>▱</span>
-            <span>Práctica</span>
-          </button>
-
-          <button
-            type="button"
-            className="practice-nav-item"
-            onClick={() => handleNavigation("/estadisticas")}
-          >
-            <span>▥</span>
-            <span>Estadísticas</span>
-          </button>
-
-          <button
-            type="button"
-            className="practice-nav-item"
-            onClick={() => handleNavigation("/ranking")}
-          >
-            <span>♜</span>
-            <span>Ranking</span>
-          </button>
-
-          <button
-            type="button"
-            className="practice-nav-item"
-            onClick={() => handleNavigation("/perfil")}
-          >
-            <span>●</span>
-            <span>Perfil</span>
-          </button>
-
-        </div>
-      </nav>
     </div>
   );
 }

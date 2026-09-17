@@ -15,6 +15,7 @@ import Profile from "../pages/student/Profile/Profile";
 import Dashboard from "../pages/admin/Dashboard/Dashboard";
 import PrivateRoutes from "./PrivateRoutes";
 import AdminRoute from "./AdminRoute";
+import StudentLayout from "../layouts/StudentLayout";
 
 function AppRoutes() {
 	return (
@@ -26,10 +27,22 @@ function AppRoutes() {
 			<Route path="/recuperar-contrasena" element={<ForgotPassword />} />
 
 			<Route element={<PrivateRoutes />}>
-				<Route path="/inicio" element={<Home />} />
+				<Route element={<StudentLayout />}>
+					<Route path="/inicio" element={<Home />} />
 
-				<Route path="/practica" element={<Practice />} />
+					<Route path="/practica" element={<Practice />} />
 
+					<Route path="/estadisticas" element={<Statistics />} />
+
+					<Route path="/ranking" element={<Ranking />} />
+
+					<Route path="/logros" element={<Achievements />} />
+
+					<Route path="/perfil" element={<Profile />} />
+				</Route>
+
+				{/* Flujo de resolución de pruebas: pila de rutas independiente del layout
+				principal (Navbar/BottomNavigation), tal como lo describe el SDD 5.1. */}
 				<Route path="/practica/cuestionario" element={<Quiz />} />
 
 				<Route path="/resultados/:resultadoId" element={<Results />} />
@@ -38,14 +51,6 @@ function AppRoutes() {
 					path="/resultados/:resultadoId/retroalimentacion"
 					element={<Feedback />}
 				/>
-
-				<Route path="/estadisticas" element={<Statistics />} />
-
-				<Route path="/ranking" element={<Ranking />} />
-
-				<Route path="/logros" element={<Achievements />} />
-
-				<Route path="/perfil" element={<Profile />} />
 			</Route>
 
 			<Route element={<AdminRoute />}>
