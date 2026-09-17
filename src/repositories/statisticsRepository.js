@@ -1,110 +1,29 @@
-// src/repositories/statisticsRepository.js
+import { collection, doc, getDocs, query, setDoc, where } from "firebase/firestore";
 
-const statistics = [];
+import { db } from "../config/firebase";
 
-/**
- * Guardar el resultado de un quiz
- */
-export const saveQuizResult = (quizResult) => {
-  if (!quizResult) {
-    throw new Error("El resultado del quiz es obligatorio.");
-  }
+export const getEstadisticasByUsuario = async (usuarioId) => {
+	const ref = query(collection(db, "estadisticas_progreso"), where("usuarioId", "==", usuarioId));
 
-  const newResult = {
-    id: statistics.length + 1,
-    ...quizResult,
-    createdAt: new Date().toISOString()
-  };
+	const snapshot = await getDocs(ref);
 
-  statistics.push(newResult);
-
-  return newResult;
+	return snapshot.docs.map((docSnap) => ({
+		id: docSnap.id,
+		...docSnap.data(),
+	}));
 };
 
-/**
- * Obtener todos los resultados
- */
-export const getAllStatistics = () => {
-  return statistics;
-};
+export const upsertEstadistica = async (usuarioId, areaId, datos) => {
+	const ref = doc(db, "estadisticas_progreso", `${usuarioId}_${areaId}`);
 
-/**
- * Obtener un resultado por su ID
- */
-export const getStatisticsById = (id) => {
-  return (
-    statistics.find(
-      (statistic) => statistic.id === Number(id)
-    ) || null
-  );
-};
-
-/**
- * Obtener resultados de un área específica
- */
-export const getStatisticsByAreaId = (areaId) => {
-  return statistics.filter(
-    (statistic) =>
-      Number(statistic.areaId) === Number(areaId)
-  );
-};
-
-/**
- * Obtener los últimos resultados
- */
-export const getRecentStatistics = (limit = 5) => {
-  return statistics
-    .slice()
-    .reverse()
-    .slice(0, limit);
-};
-
-/**
- * Obtener la cantidad de quizzes realizados
- */
-export const getTotalQuizzes = () => {
-  return statistics.length;
-};
-
-/**
- * Eliminar un resultado
- */
-export const deleteStatistics = (id) => {
-  const index = statistics.findIndex(
-    (statistic) => statistic.id === Number(id)
-  );
-
-  if (index === -1) {
-    return false;
-  }
-
-  statistics.splice(index, 1);
-
-  return true;
-};
-
-/**
- * Eliminar todas las estadísticas
- */
-export const clearStatistics = () => {
-  statistics.length = 0;
-};
-
-/**
- * Obtener estadísticas del repositorio
- */
-export const getStatisticsCount = () => {
-  return statistics.length;
-};
-
-export default {
-  saveQuizResult,
-  getAllStatistics,
-  getStatisticsById,
-  getStatisticsByAreaId,
-  getRecentStatistics,
-  getTotalQuizzes,
-  deleteStatistics,
-  clearStatistics,
-  getStatisticsCount
+	await setDoc(
+		ref,
+		{
+			usuarioId,
+			areaId,
+			porcentajeAvance: datos.porcentajeAvance,
+			promedioAciertos: datos.promedioAciertos,
+		},
+		{ merge: true }
+	);
 };

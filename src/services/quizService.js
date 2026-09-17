@@ -1,144 +1,59 @@
-// src/services/quizService.js
+import { getAllAreas, getAreaById } from "../repositories/areaRepository";
+import { createQuiz } from "../repositories/quizRepository";
+import { obtenerPreguntas } from "./questionService";
 
-import {
-  getAllQuestions,
-  getQuestionsByAreaId,
-  getQuestionById
-} from "../repositories/questionRepository";
+export const armarCuestionario = async (areaId, cantidad = 10) => {
+	const area = await getAreaById(areaId);
 
-import { getAreaById } from "../repositories/areaRepository";
+	if (!area) {
+		throw new Error("El área seleccionada no existe.");
+	}
 
-/**
- * Obtener todas las preguntas disponibles
- */
-export const getQuizQuestions = () => {
-  return getAllQuestions();
+	const preguntas = await obtenerPreguntas(areaId, null, cantidad);
+
+	const preguntasCuestionario = preguntas.map((pregunta, indice) => ({
+		preguntaId: pregunta.id,
+		orden: indice + 1,
+	}));
+
+	const cuestionarioId = await createQuiz({
+		titulo: `Cuestionario de ${area.nombre}`,
+		descripcion: area.descripcion,
+		tipo: "cuestionario",
+		areaId,
+		duracion: area.tiempoLimite,
+		preguntas: preguntasCuestionario,
+	});
+
+	return cuestionarioId;
 };
 
-/**
- * Obtener preguntas de un área específica
- */
-export const getQuizByArea = (areaId) => {
-  const area = getAreaById(areaId);
+export const armarSimulacro = async () => {
+	const areas = await getAllAreas();
 
-  if (!area) {
-    throw new Error("El área seleccionada no existe.");
-  }
+	let orden = 0;
+	const preguntasSimulacro = [];
 
-  const questions = getQuestionsByAreaId(areaId);
+	for (const area of areas) {
+		const preguntas = await obtenerPreguntas(area.id, null, area.numPreguntas);
 
-  return {
-    area,
-    questions
-  };
-};
+		preguntas.forEach((pregunta) => {
+			orden += 1;
 
-/**
- * Obtener una pregunta específica
- */
-export const getQuizQuestion = (questionId) => {
-  const question = getQuestionById(questionId);
+			preguntasSimulacro.push({ preguntaId: pregunta.id, orden });
+		});
+	}
 
-  if (!question) {
-    throw new Error("La pregunta no existe.");
-  }
+	const duracionTotal = areas.reduce((total, area) => total + (area.tiempoLimite || 0), 0);
 
-  return question;
-};
+	const cuestionarioId = await createQuiz({
+		titulo: "Simulacro general",
+		descripcion: "Simulacro con preguntas de todas las áreas.",
+		tipo: "simulacro",
+		areaId: null,
+		duracion: duracionTotal,
+		preguntas: preguntasSimulacro,
+	});
 
-/**
- * Validar una respuesta
- */
-export const checkAnswer = (questionId, answer) => {
-  const question = getQuestionById(questionId);
-
-  if (!question) {
-    throw new Error("La pregunta no existe.");
-  }
-
-  const isCorrect =
-    question.correctAnswer.toUpperCase() === answer.toUpperCase();
-
-  return {
-    correct: isCorrect,
-    correctAnswer: question.correctAnswer
-  };
-};
-
-/**
- * Calcular el resultado final del quiz
- */
-export const calculateResult = (questions, answers) => {
-  if (!questions || questions.length === 0) {
-    return {
-      totalQuestions: 0,
-      correctAnswers: 0,
-      incorrectAnswers: 0,
-      percentage: 0
-    };
-  }
-
-  let correctAnswers = 0;
-
-  questions.forEach((question) => {
-    const userAnswer = answers[question.id];
-
-    if (
-      userAnswer &&
-      question.correctAnswer.toUpperCase() === userAnswer.toUpperCase()
-    ) {
-      correctAnswers++;
-    }
-  });
-
-  const totalQuestions = questions.length;
-  const incorrectAnswers = totalQuestions - correctAnswers;
-
-  const percentage = Math.round(
-    (correctAnswers / totalQuestions) * 100
-  );
-
-  return {
-    totalQuestions,
-    correctAnswers,
-    incorrectAnswers,
-    percentage
-  };
-};
-
-/**
- * Crear un quiz nuevo
- */
-export const startQuiz = (areaId) => {
-  const quiz = getQuizByArea(areaId);
-
-  return {
-    area: quiz.area,
-    questions: quiz.questions,
-    currentQuestion: 0,
-    answers: {},
-    finished: false
-  };
-};
-
-/**
- * Finalizar el quiz y obtener resultados
- */
-export const finishQuiz = (questions, answers) => {
-  const result = calculateResult(questions, answers);
-
-  return {
-    ...result,
-    finished: true
-  };
-};
-
-export default {
-  getQuizQuestions,
-  getQuizByArea,
-  getQuizQuestion,
-  checkAnswer,
-  calculateResult,
-  startQuiz,
-  finishQuiz
+	return cuestionarioId;
 };

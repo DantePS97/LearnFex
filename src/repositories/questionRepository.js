@@ -1,114 +1,92 @@
-const STORAGE_KEY = "questions_db";
+import {
+	addDoc,
+	collection,
+	deleteDoc,
+	doc,
+	getDoc,
+	getDocs,
+	query,
+	updateDoc,
+	where,
+} from "firebase/firestore";
 
-/**
- * Estructura de una pregunta:
- * {
- *   id: string,
- *   question: string,
- *   options: [{ id: "A", text: "..." }],
- *   correctAnswer: "A",
- *   subject: "Matemáticas",
- *   difficulty: "Fácil | Medio | Difícil",
- *   createdAt: number
- * }
- */
+import { db } from "../config/firebase";
 
-function getAll() {
-  const data = localStorage.getItem(STORAGE_KEY);
-  return data ? JSON.parse(data) : [];
-}
+const mezclar = (lista) => {
+	const copia = [...lista];
 
-function saveAll(questions) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(questions));
-}
+	for (let i = copia.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
 
-// 🔹 Crear pregunta
-function create(questionData) {
-  const questions = getAll();
+		[copia[i], copia[j]] = [copia[j], copia[i]];
+	}
 
-  const newQuestion = {
-    id: crypto.randomUUID(),
-    createdAt: Date.now(),
-    ...questionData,
-  };
+	return copia;
+};
 
-  questions.push(newQuestion);
-  saveAll(questions);
+export const getQuestionsByArea = async (areaId, dificultad, cantidad) => {
+	const restricciones = [where("areaId", "==", areaId)];
 
-  return newQuestion;
-}
+	if (dificultad) {
+		restricciones.push(where("dificultad", "==", dificultad));
+	}
 
-// 🔹 Obtener por ID
-function getById(id) {
-  return getAll().find((q) => q.id === id);
-}
+	const ref = query(collection(db, "preguntas"), ...restricciones);
 
-// 🔹 Actualizar pregunta
-function update(id, updatedData) {
-  const questions = getAll();
+	const snapshot = await getDocs(ref);
 
-  const index = questions.findIndex((q) => q.id === id);
-  if (index === -1) return null;
+	const preguntas = mezclar(
+		snapshot.docs.map((docSnap) => ({
+			id: docSnap.id,
+			...docSnap.data(),
+		}))
+	);
 
-  questions[index] = {
-    ...questions[index],
-    ...updatedData,
-  };
+	return cantidad ? preguntas.slice(0, cantidad) : preguntas;
+};
 
-  saveAll(questions);
-  return questions[index];
-}
+export const getQuestionById = async (id) => {
+	const ref = doc(db, "preguntas", id);
 
-// 🔹 Eliminar pregunta
-function remove(id) {
-  const questions = getAll();
-  const filtered = questions.filter((q) => q.id !== id);
+	const snapshot = await getDoc(ref);
 
-  saveAll(filtered);
-  return true;
-}
+	if (!snapshot.exists()) {
+		return null;
+	}
 
-// 🔹 Buscar / filtrar preguntas
-function search({ text = "", subject, difficulty } = {}) {
-  let questions = getAll();
+	return {
+		id: snapshot.id,
+		...snapshot.data(),
+	};
+};
 
-  if (text) {
-    questions = questions.filter((q) =>
-      q.question.toLowerCase().includes(text.toLowerCase())
-    );
-  }
+export const createQuestion = async (datos) => {
+	if (!datos.opciones || datos.opciones.length < 2) {
+		throw new Error("La pregunta debe tener al menos 2 opciones.");
+	}
 
-  if (subject) {
-    questions = questions.filter((q) => q.subject === subject);
-  }
+	const ref = collection(db, "preguntas");
 
-  if (difficulty) {
-    questions = questions.filter((q) => q.difficulty === difficulty);
-  }
+	const nuevaPregunta = await addDoc(ref, {
+		enunciado: datos.enunciado,
+		opciones: datos.opciones,
+		respuestaCorrecta: datos.respuestaCorrecta,
+		dificultad: datos.dificultad,
+		explicacion: datos.explicacion,
+		areaId: datos.areaId,
+	});
 
-  return questions;
-}
+	return nuevaPregunta.id;
+};
 
-// 🔹 Obtener preguntas aleatorias (para simulacros)
-function getRandomQuestions(limit = 10, filters = {}) {
-  const filtered = search(filters);
+export const updateQuestion = async (id, cambios) => {
+	const ref = doc(db, "preguntas", id);
 
-  const shuffled = [...filtered].sort(() => 0.5 - Math.random());
-  return shuffled.slice(0, limit);
-}
+	await updateDoc(ref, cambios);
+};
 
-// 🔹 Limpiar base de datos (opcional)
-function clearAll() {
-  localStorage.removeItem(STORAGE_KEY);
-}
+export const deleteQuestion = async (id) => {
+	const ref = doc(db, "preguntas", id);
 
-export const questionRepository = {
-  getAll,
-  getById,
-  create,
-  update,
-  remove,
-  search,
-  getRandomQuestions,
-  clearAll,
+	await deleteDoc(ref);
 };

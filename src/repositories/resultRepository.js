@@ -1,146 +1,75 @@
-// src/repositories/resultRepository.js
+import {
+	collection,
+	doc,
+	getDoc,
+	getDocs,
+	orderBy,
+	query,
+	serverTimestamp,
+	where,
+	writeBatch,
+} from "firebase/firestore";
 
-const results = [];
+import { db } from "../config/firebase";
 
-/**
- * Guardar un nuevo resultado
- */
-export const saveResult = (result) => {
-  if (!result) {
-    throw new Error("El resultado es obligatorio.");
-  }
+export const crearResultado = async (datosResultado, respuestas) => {
+	const batch = writeBatch(db);
 
-  const newResult = {
-    id: results.length + 1,
-    ...result,
-    createdAt: new Date().toISOString()
-  };
+	const resultadoRef = doc(collection(db, "resultados"));
 
-  results.push(newResult);
+	batch.set(resultadoRef, {
+		...datosResultado,
+		fecha: serverTimestamp(),
+	});
 
-  return newResult;
+	respuestas.forEach((respuesta) => {
+		const respuestaRef = doc(collection(resultadoRef, "respuestas"));
+
+		batch.set(respuestaRef, {
+			...respuesta,
+			usuarioId: datosResultado.usuarioId,
+		});
+	});
+
+	await batch.commit();
+
+	return resultadoRef.id;
 };
 
-/**
- * Obtener todos los resultados
- */
-export const getAllResults = () => {
-  return results;
+export const getResultadosByUsuario = async (usuarioId) => {
+	const ref = query(
+		collection(db, "resultados"),
+		where("usuarioId", "==", usuarioId),
+		orderBy("fecha", "desc")
+	);
+
+	const snapshot = await getDocs(ref);
+
+	return snapshot.docs.map((docSnap) => ({
+		id: docSnap.id,
+		...docSnap.data(),
+	}));
 };
 
-/**
- * Obtener un resultado por su ID
- */
-export const getResultById = (id) => {
-  return (
-    results.find(
-      (result) => result.id === Number(id)
-    ) || null
-  );
-};
+export const getResultadoConRespuestas = async (resultadoId) => {
+	const resultadoRef = doc(db, "resultados", resultadoId);
 
-/**
- * Obtener resultados de un área específica
- */
-export const getResultsByAreaId = (areaId) => {
-  return results.filter(
-    (result) =>
-      Number(result.areaId) === Number(areaId)
-  );
-};
+	const resultadoSnapshot = await getDoc(resultadoRef);
 
-/**
- * Obtener los resultados de un usuario
- */
-export const getResultsByUserId = (userId) => {
-  return results.filter(
-    (result) =>
-      Number(result.userId) === Number(userId)
-  );
-};
+	if (!resultadoSnapshot.exists()) {
+		return null;
+	}
 
-/**
- * Obtener el último resultado registrado
- */
-export const getLastResult = () => {
-  if (results.length === 0) {
-    return null;
-  }
+	const respuestasSnapshot = await getDocs(collection(resultadoRef, "respuestas"));
 
-  return results[results.length - 1];
-};
+	const respuestas = respuestasSnapshot.docs.map((docSnap) => ({
+		id: docSnap.id,
+		...docSnap.data(),
+	}));
 
-/**
- * Obtener los resultados más recientes
- */
-export const getRecentResults = (limit = 5) => {
-  return results
-    .slice()
-    .reverse()
-    .slice(0, limit);
-};
-
-/**
- * Actualizar un resultado
- */
-export const updateResult = (id, updatedData) => {
-  const index = results.findIndex(
-    (result) => result.id === Number(id)
-  );
-
-  if (index === -1) {
-    return null;
-  }
-
-  results[index] = {
-    ...results[index],
-    ...updatedData
-  };
-
-  return results[index];
-};
-
-/**
- * Eliminar un resultado
- */
-export const deleteResult = (id) => {
-  const index = results.findIndex(
-    (result) => result.id === Number(id)
-  );
-
-  if (index === -1) {
-    return false;
-  }
-
-  results.splice(index, 1);
-
-  return true;
-};
-
-/**
- * Eliminar todos los resultados
- */
-export const clearResults = () => {
-  results.length = 0;
-};
-
-/**
- * Obtener cantidad de resultados
- */
-export const getResultsCount = () => {
-  return results.length;
-};
-
-export default {
-  saveResult,
-  getAllResults,
-  getResultById,
-  getResultsByAreaId,
-  getResultsByUserId,
-  getLastResult,
-  getRecentResults,
-  updateResult,
-  deleteResult,
-  clearResults,
-  getResultsCount
+	return {
+		id: resultadoSnapshot.id,
+		...resultadoSnapshot.data(),
+		respuestas,
+	};
 };

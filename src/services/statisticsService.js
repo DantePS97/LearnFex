@@ -1,204 +1,101 @@
-// src/services/statisticsService.js
+import { getAllAreas } from "../repositories/areaRepository";
+import { getQuizById } from "../repositories/quizRepository";
+import { getResultadosByUsuario } from "../repositories/resultRepository";
+import { upsertEstadistica } from "../repositories/statisticsRepository";
 
-/**
- * Calcular estadísticas generales de los quizzes
- *
- * @param {Array} quizResults - Resultados de los quizzes realizados
- * @returns {Object} Estadísticas generales
- */
-export const calculateGeneralStatistics = (quizResults = []) => {
-  if (!Array.isArray(quizResults) || quizResults.length === 0) {
-    return {
-      totalQuizzes: 0,
-      totalQuestions: 0,
-      correctAnswers: 0,
-      incorrectAnswers: 0,
-      averageScore: 0,
-      bestScore: 0
-    };
-  }
+const UMBRAL_RECOMENDACION = 60;
 
-  const totalQuizzes = quizResults.length;
+export const calculateAccuracy = (respuestasCorrectas, totalPreguntas) => {
+	if (!totalPreguntas || totalPreguntas <= 0) {
+		return 0;
+	}
 
-  const totalQuestions = quizResults.reduce(
-    (total, quiz) => total + (quiz.totalQuestions || 0),
-    0
-  );
-
-  const correctAnswers = quizResults.reduce(
-    (total, quiz) => total + (quiz.correctAnswers || 0),
-    0
-  );
-
-  const incorrectAnswers = totalQuestions - correctAnswers;
-
-  const totalScore = quizResults.reduce(
-    (total, quiz) => total + (quiz.percentage || 0),
-    0
-  );
-
-  const averageScore = Math.round(totalScore / totalQuizzes);
-
-  const bestScore = Math.max(
-    ...quizResults.map((quiz) => quiz.percentage || 0)
-  );
-
-  return {
-    totalQuizzes,
-    totalQuestions,
-    correctAnswers,
-    incorrectAnswers,
-    averageScore,
-    bestScore
-  };
+	return Math.round((respuestasCorrectas / totalPreguntas) * 100);
 };
 
-/**
- * Calcular porcentaje de respuestas correctas
- */
-export const calculateAccuracy = (
-  correctAnswers,
-  totalQuestions
-) => {
-  if (!totalQuestions || totalQuestions <= 0) {
-    return 0;
-  }
+// Los resultados no guardan areaId (solo cuestionarioId), así que se resuelve por cuestionario, con cache.
+const obtenerAreaIdDelResultado = async (resultado, cacheCuestionarios) => {
+	if (cacheCuestionarios.has(resultado.cuestionarioId)) {
+		return cacheCuestionarios.get(resultado.cuestionarioId);
+	}
 
-  return Math.round(
-    (correctAnswers / totalQuestions) * 100
-  );
+	const cuestionario = await getQuizById(resultado.cuestionarioId);
+	const areaId = cuestionario ? cuestionario.areaId : null;
+
+	cacheCuestionarios.set(resultado.cuestionarioId, areaId);
+
+	return areaId;
 };
 
-/**
- * Obtener estadísticas de un área específica
- */
-export const calculateAreaStatistics = (
-  quizResults = [],
-  areaId
-) => {
-  const areaResults = quizResults.filter(
-    (quiz) => Number(quiz.areaId) === Number(areaId)
-  );
+export const calcularEstadisticas = async (usuarioId) => {
+	const [resultados, areas] = await Promise.all([
+		getResultadosByUsuario(usuarioId),
+		getAllAreas(),
+	]);
 
-  if (areaResults.length === 0) {
-    return {
-      areaId: Number(areaId),
-      totalQuizzes: 0,
-      averageScore: 0,
-      bestScore: 0
-    };
-  }
+	const cacheCuestionarios = new Map();
 
-  const totalScore = areaResults.reduce(
-    (total, quiz) => total + (quiz.percentage || 0),
-    0
-  );
+	const resultadosConArea = await Promise.all(
+		resultados.map(async (resultado) => ({
+			...resultado,
+			areaId: await obtenerAreaIdDelResultado(resultado, cacheCuestionarios),
+		}))
+	);
 
-  const averageScore = Math.round(
-    totalScore / areaResults.length
-  );
+	const porArea = [];
 
-  const bestScore = Math.max(
-    ...areaResults.map((quiz) => quiz.percentage || 0)
-  );
+	for (const area of areas) {
+		const resultadosArea = resultadosConArea.filter((resultado) => resultado.areaId === area.id);
 
-  return {
-    areaId: Number(areaId),
-    totalQuizzes: areaResults.length,
-    averageScore,
-    bestScore
-  };
-};
+		const totalPreguntas = resultadosArea.reduce(
+			(total, resultado) => total + (resultado.respuestasCorrectas || 0) + (resultado.respuestasIncorrectas || 0),
+			0
+		);
 
-/**
- * Obtener estadísticas de todas las áreas
- */
-export const calculateAllAreaStatistics = (
-  quizResults = [],
-  areas = []
-) => {
-  return areas.map((area) => {
-    return {
-      ...area,
-      ...calculateAreaStatistics(quizResults, area.id)
-    };
-  });
-};
+		const respuestasCorrectas = resultadosArea.reduce(
+			(total, resultado) => total + (resultado.respuestasCorrectas || 0),
+			0
+		);
 
-/**
- * Obtener el porcentaje de progreso
- */
-export const calculateProgress = (
-  completed,
-  total
-) => {
-  if (!total || total <= 0) {
-    return 0;
-  }
+		const promedioAciertos = calculateAccuracy(respuestasCorrectas, totalPreguntas);
+		const porcentajeAvance = resultadosArea.length > 0 ? 100 : 0;
 
-  const progress = (completed / total) * 100;
+		await upsertEstadistica(usuarioId, area.id, { porcentajeAvance, promedioAciertos });
 
-  return Math.min(Math.round(progress), 100);
-};
+		porArea.push({
+			areaId: area.id,
+			nombre: area.nombre,
+			totalPruebas: resultadosArea.length,
+			promedioAciertos,
+			porcentajeAvance,
+		});
+	}
 
-/**
- * Obtener la cantidad de respuestas correctas
- */
-export const getCorrectAnswers = (quizResults = []) => {
-  return quizResults.reduce(
-    (total, quiz) => total + (quiz.correctAnswers || 0),
-    0
-  );
-};
+	const totalCorrectasGeneral = resultados.reduce(
+		(total, resultado) => total + (resultado.respuestasCorrectas || 0),
+		0
+	);
 
-/**
- * Obtener la cantidad de quizzes realizados
- */
-export const getCompletedQuizzes = (quizResults = []) => {
-  return quizResults.length;
-};
+	const totalPreguntasGeneral = resultados.reduce(
+		(total, resultado) => total + (resultado.respuestasCorrectas || 0) + (resultado.respuestasIncorrectas || 0),
+		0
+	);
 
-/**
- * Obtener la mejor puntuación
- */
-export const getBestScore = (quizResults = []) => {
-  if (quizResults.length === 0) {
-    return 0;
-  }
+	const general = {
+		totalPruebas: resultados.length,
+		promedioAciertos: calculateAccuracy(totalCorrectasGeneral, totalPreguntasGeneral),
+	};
 
-  return Math.max(
-    ...quizResults.map((quiz) => quiz.percentage || 0)
-  );
-};
+	const temasRecomendados = porArea
+		.filter((area) => area.promedioAciertos < UMBRAL_RECOMENDACION)
+		.sort((a, b) => a.promedioAciertos - b.promedioAciertos)
+		.slice(0, 2)
+		.map((area) => area.nombre);
 
-/**
- * Obtener un resumen completo de estadísticas
- */
-export const getStatisticsSummary = (
-  quizResults = [],
-  areas = []
-) => {
-  const general = calculateGeneralStatistics(quizResults);
-
-  const areaStatistics = calculateAllAreaStatistics(
-    quizResults,
-    areas
-  );
-
-  return {
-    general,
-    areas: areaStatistics
-  };
+	return { porArea, general, temasRecomendados };
 };
 
 export default {
-  calculateGeneralStatistics,
-  calculateAccuracy,
-  calculateAreaStatistics,
-  calculateAllAreaStatistics,
-  calculateProgress,
-  getCorrectAnswers,
-  getCompletedQuizzes,
-  getBestScore,
-  getStatisticsSummary
+	calculateAccuracy,
+	calcularEstadisticas,
 };
