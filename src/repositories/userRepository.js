@@ -6,7 +6,6 @@ import {
 	limit,
 	orderBy,
 	query,
-	runTransaction,
 	setDoc,
 	startAfter,
 	updateDoc,
@@ -58,35 +57,6 @@ export const updateUserProfile = async (uid, changes) => {
 	});
 
 	await updateDoc(ref, cambiosSeguros);
-};
-
-const XP_MAXIMO_POR_LLAMADA = 100;
-
-export const actualizarGamificacion = async (uid, xpGanado) => {
-	const ref = doc(db, "usuarios", uid);
-
-	return runTransaction(db, async (transaction) => {
-		const snapshot = await transaction.get(ref);
-
-		if (!snapshot.exists()) {
-			throw new Error("El usuario no existe.");
-		}
-
-		const { xp: xpActual, nivel: nivelActual } = snapshot.data();
-
-		// El aumento se limita a 100 por llamada porque firestore.rules exige xp_nuevo <= xp_viejo + 100.
-		const xpAplicado = Math.min(Math.max(xpGanado, 0), XP_MAXIMO_POR_LLAMADA);
-
-		const nuevoXp = xpActual + xpAplicado;
-		const nuevoNivel = Math.max(Math.floor(nuevoXp / 1000) + 1, nivelActual);
-
-		transaction.update(ref, {
-			xp: nuevoXp,
-			nivel: nuevoNivel,
-		});
-
-		return { xp: nuevoXp, nivel: nuevoNivel };
-	});
 };
 
 export const getAllUsers = async (cursor = null, pageSize = 10) => {
