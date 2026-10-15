@@ -1,6 +1,8 @@
 // src/layouts/AdminLayout.jsx
 
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
+
+import * as authServices from "../services/authServices";
 
 import {
 	FiGrid,
@@ -10,6 +12,7 @@ import {
 	FiAward,
 	FiBarChart2,
 	FiSettings,
+	FiLogOut,
 } from "react-icons/fi";
 
 import "./AdminLayout.css";
@@ -57,6 +60,27 @@ const adminNavigationItems = [
 ];
 
 function AdminLayout() {
+	const navigate = useNavigate();
+
+	// Mismo patrón que el Perfil del estudiante: confirmar, cerrar sesión y
+	// volver al login.
+	const handleLogout = async () => {
+		const confirmar = window.confirm(
+			"¿Estás seguro de que querés cerrar sesión?"
+		);
+
+		if (!confirmar) {
+			return;
+		}
+
+		try {
+			await authServices.logout();
+			navigate("/");
+		} catch {
+			window.alert("No se pudo cerrar sesión, intentá de nuevo");
+		}
+	};
+
 	return (
 		<div className="admin-layout">
 			<header className="admin-header">
@@ -88,6 +112,19 @@ function AdminLayout() {
 						</NavLink>
 					))}
 				</nav>
+
+				<button
+					type="button"
+					className="admin-header-logout"
+					onClick={handleLogout}
+					aria-label="Cerrar sesión"
+				>
+					<span className="admin-header-logout-icon">
+						<FiLogOut />
+					</span>
+
+					<span className="admin-header-logout-label">Cerrar sesión</span>
+				</button>
 			</header>
 
 			<main className="admin-content">
