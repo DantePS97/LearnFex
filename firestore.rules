@@ -18,13 +18,6 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre', 'apellido', 'colegio']);
     }
 
-    function esActualizacionDeGamificacion() {
-      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['xp', 'nivel']) &&
-        request.resource.data.xp >= resource.data.xp &&
-        request.resource.data.xp <= resource.data.xp + 100 &&
-        request.resource.data.nivel >= resource.data.nivel;
-    }
-
     match /usuarios/{usuarioId} {
       allow read: if esPropioUsuario(usuarioId) || esAdministrador();
 
@@ -34,14 +27,13 @@ service cloud.firestore {
         request.resource.data.xp == 0 &&
         request.resource.data.nivel == 1;
 
-      allow update: if esAdministrador() ||
-        (esPropioUsuario(usuarioId) && (esActualizacionDePerfil() || esActualizacionDeGamificacion()));
+      allow update: if esAdministrador() || (esPropioUsuario(usuarioId) && esActualizacionDePerfil());
 
       allow delete: if false;
 
       match /logrosObtenidos/{logroId} {
         allow read: if esPropioUsuario(usuarioId) || esAdministrador();
-        allow create: if esPropioUsuario(usuarioId);
+        allow create: if false;
         allow update, delete: if false;
       }
     }
@@ -66,8 +58,7 @@ service cloud.firestore {
       allow read: if estaAutenticado() &&
         (resource.data.usuarioId == request.auth.uid || esAdministrador());
 
-      allow create: if estaAutenticado() &&
-        request.resource.data.usuarioId == request.auth.uid;
+      allow create: if false;
 
       allow update, delete: if false;
 
@@ -75,8 +66,7 @@ service cloud.firestore {
         allow read: if estaAutenticado() &&
           (resource.data.usuarioId == request.auth.uid || esAdministrador());
 
-        allow create: if estaAutenticado() &&
-          request.resource.data.usuarioId == request.auth.uid;
+        allow create: if false;
 
         allow update, delete: if false;
       }
