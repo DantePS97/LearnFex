@@ -1,20 +1,22 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Home.css";
 
 import { getAllAreas } from "../../../repositories/areaRepository";
+import { useAuth } from "../../../hooks/useAuth";
+
+// Misma regla que functions/src/gamificacion.js: el nivel sube cada 1000 XP.
+const XP_POR_NIVEL = 1000;
 
 const Home = () => {
   const navigate = useNavigate();
+  const { profile } = useAuth();
 
-  // Datos temporales del estudiante.
-  // Posteriormente pueden venir desde el backend.
-  const student = {
-    name: "Estudiante",
-    level: "Nivel intermedio",
-    points: 1250,
-    streak: 5,
-  };
+  const nombre = profile?.nombre?.trim() || "Estudiante";
+  const xp = profile?.xp ?? 0;
+  const nivel = profile?.nivel ?? 1;
+  const xpEnNivel = xp % XP_POR_NIVEL;
+  const progresoNivel = Math.round((xpEnNivel / XP_POR_NIVEL) * 100);
 
   const [areas, setAreas] = useState([]);
 
@@ -58,7 +60,7 @@ const Home = () => {
       <section className="home-header">
         <div className="home-welcome">
           <p className="home-greeting">
-            ¡Hola, {student.name}! 👋
+            ¡Hola, {nombre}! 👋
           </p>
 
           <h1 className="home-title">
@@ -76,7 +78,7 @@ const Home = () => {
             Tu nivel
           </span>
 
-          <strong>{student.level}</strong>
+          <strong>Nivel {nivel}</strong>
         </div>
       </section>
 
@@ -94,21 +96,21 @@ const Home = () => {
             </span>
 
             <strong className="home-stat-value">
-              {student.points}
+              {xp}
             </strong>
           </div>
         </article>
 
         <article className="home-stat-card">
-          <div className="home-stat-icon">🔥</div>
+          <div className="home-stat-icon">⬆</div>
 
           <div>
             <span className="home-stat-label">
-              Racha
+              Para subir de nivel
             </span>
 
             <strong className="home-stat-value">
-              {student.streak} días
+              {XP_POR_NIVEL - xpEnNivel} XP
             </strong>
           </div>
         </article>
@@ -118,11 +120,11 @@ const Home = () => {
 
           <div>
             <span className="home-stat-label">
-              Progreso
+              Progreso del nivel
             </span>
 
             <strong className="home-stat-value">
-              75%
+              {progresoNivel}%
             </strong>
           </div>
         </article>
