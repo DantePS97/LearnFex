@@ -7,6 +7,7 @@ import {
 	limit,
 	orderBy,
 	query,
+	serverTimestamp,
 	startAfter,
 	updateDoc,
 } from "firebase/firestore";
@@ -24,6 +25,7 @@ export const createQuiz = async (datos) => {
 		duracion: datos.duracion,
 		estado: "activo",
 		preguntas: datos.preguntas,
+		fechaCreacion: serverTimestamp(),
 	});
 
 	return nuevoCuestionario.id;
@@ -52,6 +54,7 @@ export const getQuizById = async (id) => {
 export const getAllQuizzes = async (cursor = null, pageSize = 10) => {
 	const cuestionariosRef = collection(db, "cuestionarios");
 
+	// Los cuestionarios creados antes de guardar fechaCreacion quedan fuera de la lista (descartables, decision consciente).
 	let q;
 
 	if (cursor) {

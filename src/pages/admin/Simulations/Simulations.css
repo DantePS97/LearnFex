@@ -18,7 +18,7 @@
 /* HEADER */
 .simulations__header {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
+  grid-template-columns: 2fr 1fr 1.5fr 1.5fr 1fr 1fr;
   font-weight: bold;
   padding: var(--space-sm);
   border-bottom: 1px solid var(--color-border);
@@ -27,7 +27,7 @@
 /* FILAS */
 .simulations__row {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
+  grid-template-columns: 2fr 1fr 1.5fr 1.5fr 1fr 1fr;
   padding: var(--space-sm);
   border-radius: var(--radius-md);
   background: var(--color-surface);
