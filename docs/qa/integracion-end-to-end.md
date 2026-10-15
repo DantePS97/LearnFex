@@ -3,20 +3,21 @@
 Este documento es la plantilla de ejecución del recorrido completo de LearnFex: los módulos del estudiante y los del administrador, más los cruces entre ambos. Sirve para registrar, con evidencia, qué se probó, quién lo probó y qué resultó.
 
 - Estado del documento: plantilla de ejecución. **Ningún módulo fue ejecutado todavía y ninguno está aprobado.** Todas las casillas están vacías a propósito: un módulo solo se marca como aprobado cuando una persona lo ejecutó y dejó fecha, tester, entorno y evidencia.
-- Verificado contra el código de `main` en el commit `f17a14c`. Si `main` cambió desde entonces, revisar los pasos antes de ejecutarlos.
+- Verificado contra el código de `main` en el commit `c3d71aa`. Si `main` cambió desde entonces, revisar los pasos antes de ejecutarlos.
 - Autoría original del borrador: Silvana Castro (PR #61). El borrador declaraba los 8 módulos como aprobados sin evidencia; este documento lo reemplaza.
-- El módulo 8 (Configuración / Mi progreso) no existe para el estudiante en `main`: depende del PR #53 (`feature/PerfilMenuCompleto`, sin mergear). Ver el módulo 8.
+- Actualizado tras los merges del seed de 40 preguntas (PR #65), la pantalla de historial `/historial` (PR #67), el menú completo de Perfil con cierre de sesión (PR #53) y la lista de `/admin/simulacros` (PR #76). El módulo 8 (menú del Perfil) y el módulo A4 (Simulacros) pasaron de "bloqueado/esperado a fallar" a módulos normales.
 
 ---
 
 ## Precondiciones generales
 
 - Aplicación corriendo con `npm run dev`, apuntando a un proyecto de Firebase de pruebas (nunca datos reales), con `firestore.rules` y la función `calificarPrueba` desplegadas.
-- Datos del seed cargados (`scripts/seed-preguntas.js`): 5 áreas, 20 preguntas y 3 logros.
+- Datos del seed cargados (`scripts/seed-preguntas.js`): 5 áreas, 40 preguntas (8 por área) y 3 logros. Con ese banco un cuestionario por área tiene 8 preguntas y el simulacro 30. Si el proyecto ya tenía el seed anterior (20 preguntas), volver a ejecutar el script: sobrescribe las áreas (`numPreguntas: 6`) y agrega `seed_21` a `seed_40`.
+- Índices de Firestore desplegados (`firestore.indexes.json`): Estadísticas e Historial consultan `resultados` con `usuarioId` y orden por `fecha` descendente, y eso necesita un índice compuesto. El emulador de Firestore no lo exige: en emuladores no se puede comprobar si falta.
 - Una cuenta de estudiante nueva (se crea en el módulo 1) y una cuenta de administrador: registrar una cuenta y cambiar a mano su campo `rol` a `administrador` en `usuarios/{uid}` desde la consola de Firestore (solo en el proyecto de pruebas).
 - Acceso de lectura a la consola de Firestore para comprobar documentos.
 - Consola del navegador abierta (DevTools) para revisar errores en cada módulo.
-- En `main` no hay botón de "Cerrar sesión" (el PR #53 lo agrega en Perfil). Para cambiar de cuenta usar ventanas privadas distintas o borrar los datos del sitio.
+- Para cambiar de cuenta se puede usar "Cerrar sesión" en Perfil (módulo 8) o ventanas privadas distintas.
 
 ## Datos de la ejecución
 
@@ -29,7 +30,6 @@ Este documento es la plantilla de ejecución del recorrido completo de LearnFex:
 | Proyecto de Firebase | |
 | Cuenta de estudiante (correo) | |
 | Cuenta de administrador (correo) | |
-| Estado del PR #53 al ejecutar (mergeado o no) | |
 
 ## Cómo registrar el resultado
 
@@ -73,11 +73,11 @@ Este documento es la plantilla de ejecución del recorrido completo de LearnFex:
 | Paso | Acción | Resultado esperado | Resultado |
 | ---- | ------ | ------------------ | --------- |
 | 2.1 | Abrir `/practica`. | Se listan las 5 áreas desde Firestore. El buscador "Buscar área..." y los filtros por nombre acotan la lista. | [ ] Pasa  [ ] Falla |
-| 2.2 | Tocar un área. | Se abre `/practica/cuestionario` sin barra de navegación superior ni inferior. Se ve el nombre del área, "Pregunta 1 de 4" y el temporizador en cuenta regresiva. Las preguntas cargan sin errores. | [ ] Pasa  [ ] Falla |
+| 2.2 | Tocar un área. | Se abre `/practica/cuestionario` sin barra de navegación superior ni inferior. Se ve el nombre del área, "Pregunta 1 de 8" (con el seed) y el temporizador en cuenta regresiva. Las preguntas cargan sin errores. | [ ] Pasa  [ ] Falla |
 | 2.3 | Responder preguntas, cambiar una respuesta y saltar entre preguntas con la "Navegación de preguntas". | Solo queda marcada la última opción elegida. Las respondidas se marcan en la navegación. | [ ] Pasa  [ ] Falla |
 | 2.4 | En la última pregunta, tocar "Finalizar". | El botón muestra "Enviando..." y se navega a `/resultados/{cuestionarioId}_{uid}`. | [ ] Pasa  [ ] Falla |
 | 2.5 | En Firestore, revisar `cuestionarios`, `resultados/{cuestionarioId}_{uid}` y su subcolección `respuestas`. | Existe el cuestionario, un resultado con `usuarioId` correcto y una respuesta por pregunta. | [ ] Pasa  [ ] Falla |
-| 2.6 | Opcional: iniciar un simulacro escribiendo `/practica/cuestionario` en la barra de direcciones. | Se abre el "Simulacro general" con 20 preguntas (4 por área) y 95 minutos. **Comportamiento actual conocido:** no hay ningún botón para llegar a esta pantalla. | [ ] Pasa  [ ] Falla |
+| 2.6 | Opcional: iniciar un simulacro escribiendo `/practica/cuestionario` en la barra de direcciones. | Se abre el "Simulacro general" con 30 preguntas (6 por área, elegidas entre las 8 de cada una) y 95 minutos. **Comportamiento actual conocido:** no hay ningún botón para llegar a esta pantalla. | [ ] Pasa  [ ] Falla |
 
 **Cierre del módulo 2:**
 
@@ -90,11 +90,11 @@ Este documento es la plantilla de ejecución del recorrido completo de LearnFex:
 
 ## Módulo 3: Resultados y retroalimentación
 
-**Precondiciones:** una prueba recién finalizada en el módulo 2, con aciertos y errores conocidos (por ejemplo 3 correctas y 1 incorrecta).
+**Precondiciones:** una prueba recién finalizada en el módulo 2, con aciertos y errores conocidos (por ejemplo, en un cuestionario por área de 8 preguntas, 6 correctas y 2 incorrectas).
 
 | Paso | Acción | Resultado esperado | Resultado |
 | ---- | ------ | ------------------ | --------- |
-| 3.1 | Observar `/resultados/{id}`. | El puntaje es un porcentaje entero (75% para 3 de 4), con "Preguntas: 4", "Correctas: 3", "Incorrectas: 1" y la fecha. El estado es "Aprobado" con 60% o más y "No aprobado" con menos. | [ ] Pasa  [ ] Falla |
+| 3.1 | Observar `/resultados/{id}`. | El puntaje es un porcentaje entero (75% para 6 de 8), con "Preguntas: 8", "Correctas: 6", "Incorrectas: 2" y la fecha. El estado es "Aprobado" con 60% o más y "No aprobado" con menos. | [ ] Pasa  [ ] Falla |
 | 3.2 | Tocar "Ver retroalimentación". | Se abre `/resultados/{id}/retroalimentacion` (también sin barra de navegación). Cada pregunta muestra la opción elegida, la correcta, la etiqueta Correcta o Incorrecta y la explicación. | [ ] Pasa  [ ] Falla |
 | 3.3 | Tocar "Volver a resultados". | Se vuelve a `/resultados/{id}`. | [ ] Pasa  [ ] Falla |
 | 3.4 | Tocar "Nuevo cuestionario" y luego, desde otro resultado, "Volver al inicio". | Navegan a `/practica` y `/inicio`. | [ ] Pasa  [ ] Falla |
@@ -130,9 +130,9 @@ Este documento es la plantilla de ejecución del recorrido completo de LearnFex:
 
 ---
 
-## Módulo 5: Estadísticas
+## Módulo 5: Estadísticas e historial
 
-**Precondiciones:** el estudiante completó pruebas en al menos 2 áreas, con resultados distintos.
+**Precondiciones:** el estudiante completó pruebas en al menos 2 áreas, con resultados distintos. Para los pasos del historial, anotar antes cuántas pruebas tiene. Para el paso 5.11 se necesita además una cuenta de estudiante sin ninguna prueba.
 
 | Paso | Acción | Resultado esperado | Resultado |
 | ---- | ------ | ------------------ | --------- |
@@ -141,7 +141,13 @@ Este documento es la plantilla de ejecución del recorrido completo de LearnFex:
 | 5.3 | Revisar "Temas recomendados". | Se listan hasta 2 áreas con menos de 60%, las más bajas primero. Las áreas sin pruebas (0%) también se recomiendan. | [ ] Pasa  [ ] Falla |
 | 5.4 | Completar una prueba más y volver a `/estadisticas`. | Los valores se actualizan. Las pruebas de simulacro cuentan en el total y en el promedio general, pero no en el progreso por área. | [ ] Pasa  [ ] Falla |
 | 5.5 | Tocar "Practicar". | Navega a `/practica`. | [ ] Pasa  [ ] Falla |
-| 5.6 | Buscar un historial de pruebas (lista con fecha, área, puntaje y tiempo). | La ERS (RF-012) pide un historial cronológico. **Comportamiento actual conocido:** no existe esa lista; el botón "Historial" de Práctica lleva a `/estadisticas`, que solo muestra totales y promedios. Este paso falla hoy. | [ ] Pasa  [ ] Falla |
+| 5.6 | En un ancho de más de 600 px, abrir `/practica` y tocar "Historial". | Navega a `/historial` (no a `/estadisticas`). Se ve la etiqueta "MI PROGRESO", el título "Historial", la sección "Resultados anteriores" con el texto "Tus cuestionarios aparecen del más reciente al más antiguo." y el botón "Practicar". **Comportamiento actual conocido:** en 600 px o menos el botón "Historial" de Práctica se oculta por CSS y no hay otro acceso desde la interfaz (solo escribiendo `/historial`). | [ ] Pasa  [ ] Falla |
+| 5.7 | Revisar la lista de `/historial`. | Hay una fila por cada prueba del estudiante (la cantidad coincide con "Pruebas" de `/estadisticas` y con los documentos de `resultados` con su `usuarioId`), ordenadas de la más reciente a la más antigua. Cada fila muestra "Cuestionario", la fecha y hora, "Puntaje" en %, "Correctas", "Incorrectas" y la etiqueta "Aprobado" (60% o más) o "No aprobado". | [ ] Pasa  [ ] Falla |
+| 5.8 | Completar una prueba nueva y volver a `/historial`. | La prueba nueva aparece en la primera fila, con su puntaje y sus cantidades de correctas e incorrectas. | [ ] Pasa  [ ] Falla |
+| 5.9 | Tocar una fila del historial. | Navega a `/resultados/{id}` y muestra el resultado de esa prueba. | [ ] Pasa  [ ] Falla |
+| 5.10 | Comparar cada fila con lo que pide la ERS (RF-012): historial cronológico con fecha, área, puntaje y tiempo. | Fecha y puntaje se cubren. **Comportamiento actual conocido:** la fila no muestra el área ni el tiempo empleado, y el título siempre dice "Cuestionario", también en los simulacros. Este paso falla hoy respecto de la ERS. | [ ] Pasa  [ ] Falla |
+| 5.11 | Con una cuenta de estudiante sin ninguna prueba, abrir `/historial`. | Estado vacío: título "Historial", el texto "Todavía no completaste ningún cuestionario" y el botón "Realizar cuestionario", que navega a `/practica`. | [ ] Pasa  [ ] Falla |
+| 5.12 | En el proyecto de pruebas real (no en emuladores), comprobar en la consola de Firestore, sección Índices, que el índice compuesto de `resultados` (`usuarioId` ascendente y `fecha` descendente) está "Habilitado"; luego abrir `/historial`. | Con el índice habilitado la lista carga. Sin él, la consulta falla y se ve "No se pudo cargar el historial" con el botón "Intentar nuevamente" (`/estadisticas` usa la misma consulta). Este paso no se puede verificar con emuladores: no exigen índices compuestos. | [ ] Pasa  [ ] Falla |
 
 **Cierre del módulo 5:**
 
@@ -193,22 +199,24 @@ Este documento es la plantilla de ejecución del recorrido completo de LearnFex:
 
 ---
 
-## Módulo 8: Configuración / Mi progreso (depende del PR #53)
+## Módulo 8: Menú del Perfil (Mi progreso, cambio de contraseña y cerrar sesión)
 
-**Este módulo no existe para el estudiante en `main`.** En `main`, Perfil solo tiene el acceso "Logros". Los accesos "Mi progreso", "Configuración" y "Cerrar sesión" están únicamente en la rama `feature/PerfilMenuCompleto` (PR #53, sin mergear).
-
-**Precondición para ejecutarlo:** el PR #53 está mergeado en la rama que se prueba. Comprobarlo abriendo `/perfil`: debe verse un menú con "Logros", "Mi progreso", "Configuración" y "Cerrar sesión". Si solo está "Logros", marcar este módulo como **Bloqueado (depende del PR #53)** y no completar los pasos.
+**Precondiciones:** sesión iniciada como estudiante, con una cuenta de prueba cuyo correo permita recibir mensajes (para el paso 8.3). Los accesos se ven en `/perfil` (`src/pages/student/Profile/Profile.jsx`). Este módulo va al final del recorrido del estudiante porque cierra la sesión.
 
 | Paso | Acción | Resultado esperado | Resultado |
 | ---- | ------ | ------------------ | --------- |
-| 8.1 | Tocar "Mi progreso". | Navega a `/estadisticas`. | [ ] Pasa  [ ] Falla |
-| 8.2 | Tocar "Configuración". | Se envía un correo de restablecimiento de contraseña a `profile.correo` y aparece "Te enviamos un correo para cambiar tu contraseña". El correo llega a la bandeja de la cuenta de prueba. | [ ] Pasa  [ ] Falla |
-| 8.3 | Tocar "Cerrar sesión" y cancelar el aviso de confirmación. | Aparece "¿Estás seguro de que querés cerrar sesión?"; al cancelar la sesión sigue activa. | [ ] Pasa  [ ] Falla |
-| 8.4 | Tocar "Cerrar sesión" y aceptar. | Se navega a `/`. Al escribir `/inicio` se redirige otra vez a `/` (sin sesión). | [ ] Pasa  [ ] Falla |
+| 8.1 | Abrir `/perfil` y revisar el menú. | Se ven cuatro accesos: "Logros", "Mi progreso", "Configuración" y "Cerrar sesión". | [ ] Pasa  [ ] Falla |
+| 8.2 | Tocar "Mi progreso". | Navega a `/estadisticas`. | [ ] Pasa  [ ] Falla |
+| 8.3 | Volver a `/perfil` y tocar "Configuración" (cambio de contraseña). | Se envía un correo de restablecimiento de contraseña a `profile.correo` y aparece "Te enviamos un correo para cambiar tu contraseña". El correo llega a la bandeja de la cuenta de prueba. **Observación:** pese al nombre del acceso, "Configuración" no abre ninguna pantalla; su única acción es enviar ese correo. | [ ] Pasa  [ ] Falla |
+| 8.4 | Opcional: con DevTools en modo sin conexión, tocar "Configuración". | Aparece "No se pudo enviar el correo para cambiar la contraseña, intentá de nuevo". | [ ] Pasa  [ ] Falla |
+| 8.5 | Tocar "Cerrar sesión" y cancelar el aviso de confirmación. | Aparece "¿Estás seguro de que querés cerrar sesión?"; al cancelar la sesión sigue activa y se permanece en `/perfil`. | [ ] Pasa  [ ] Falla |
+| 8.6 | Tocar "Cerrar sesión" y aceptar. | Se navega a `/` (pantalla de inicio de sesión). | [ ] Pasa  [ ] Falla |
+| 8.7 | Tras cerrar sesión, escribir `/inicio`, `/perfil` y `/historial` en la barra de direcciones, y probar el botón "Atrás" del navegador. | Cada ruta redirige a `/`: ya no hay sesión y no se ve ninguna pantalla del estudiante. | [ ] Pasa  [ ] Falla |
+| 8.8 | Iniciar sesión con la cuenta de administrador. | Se navega a `/admin`: el cierre de sesión permite cambiar de cuenta sin ventanas privadas. | [ ] Pasa  [ ] Falla |
 
 **Cierre del módulo 8:**
 
-- Estado: [ ] Aprobado  [ ] Con fallas  [ ] Bloqueado (depende del PR #53)
+- Estado: [ ] Aprobado  [ ] Con fallas  [ ] Bloqueado
 - Fecha / Tester / Entorno:
 - Evidencia (captura, log o enlace):
 - Observaciones:
@@ -217,7 +225,7 @@ Este documento es la plantilla de ejecución del recorrido completo de LearnFex:
 
 # Recorrido del administrador
 
-**Precondiciones:** cuenta de administrador (ver precondiciones generales). Haber ejecutado antes algunos módulos del estudiante para que haya datos (usuarios, resultados). Los controles de acceso (qué rutas y datos puede usar cada rol) se verifican en detalle en `docs/qa/verificacion-rbac.md`. El panel no tiene botón de "Cerrar sesión" en `main`.
+**Precondiciones:** cuenta de administrador (ver precondiciones generales). Haber ejecutado antes algunos módulos del estudiante para que haya datos (usuarios, resultados). Los controles de acceso (qué rutas y datos puede usar cada rol) se verifican en detalle en `docs/qa/verificacion-rbac.md`. El panel no tiene botón de "Cerrar sesión": el administrador puede cerrar sesión entrando a `/perfil`, que también está abierto para su rol.
 
 ## Módulo A1: Acceso del administrador y Dashboard
 
@@ -265,7 +273,7 @@ Este documento es la plantilla de ejecución del recorrido completo de LearnFex:
 | A3.3 | Tocar "+ Nueva pregunta" y guardar sin enunciado; luego, con el resto completo, guardar sin elegir la respuesta correcta. | Aparecen los mensajes "El enunciado es obligatorio." y "Debes seleccionar una respuesta correcta.". No se guarda nada. | [ ] Pasa  [ ] Falla |
 | A3.4 | Crear una pregunta válida con `areaId` igual al ID de un área (por ejemplo `matematicas`), 3 opciones y respuesta correcta. | Se guarda y aparece en la lista; existe en `preguntas` con sus opciones `{id: A, text: ...}`. | [ ] Pasa  [ ] Falla |
 | A3.5 | Editar esa pregunta (cambiar enunciado y respuesta correcta). | Los cambios se reflejan en la lista y en Firestore. | [ ] Pasa  [ ] Falla |
-| A3.6 | Como estudiante, iniciar un cuestionario del área elegida. | La pregunta nueva forma parte del banco del área y puede aparecer en el cuestionario (con el seed, el cuestionario toma todas las preguntas del área hasta 10). | [ ] Pasa  [ ] Falla |
+| A3.6 | Como estudiante, iniciar un cuestionario del área elegida. | La pregunta nueva forma parte del banco del área y puede aparecer en el cuestionario (con el seed, el cuestionario toma todas las preguntas del área hasta 10: 8 más la nueva). | [ ] Pasa  [ ] Falla |
 | A3.7 | Eliminar la pregunta de prueba y confirmar. | Desaparece de la lista y de Firestore. **Comportamiento actual conocido:** no hay advertencia sobre el impacto en resultados ya guardados (CU-05, flujo alternativo 4a de la ERS); la retroalimentación de esos resultados omite la pregunta borrada en silencio. | [ ] Pasa  [ ] Falla |
 
 **Cierre del módulo A3:**
@@ -281,8 +289,11 @@ Este documento es la plantilla de ejecución del recorrido completo de LearnFex:
 
 | Paso | Acción | Resultado esperado | Resultado |
 | ---- | ------ | ------------------ | --------- |
-| A4.1 | Con al menos un cuestionario o simulacro ya creado por estudiantes, abrir `/admin/simulacros`. | Se listan los cuestionarios con Nombre, Área, Estado y la acción "Desactivar", de a 10. **Comportamiento actual conocido (por lectura del código):** la lista aparece vacía ("No hay simulacros") porque la consulta ordena por `fechaCreacion` y la aplicación nunca guarda ese campo al crear cuestionarios. Además, las columnas Nombre y Área leen `nombre` y `area`, pero los cuestionarios guardan `titulo` y `areaId`. Este paso se espera que falle. | [ ] Pasa  [ ] Falla |
-| A4.2 | Si hay filas, tocar "Desactivar" en una y confirmar. | El estado cambia a "inactivo" y el botón queda deshabilitado; `cuestionarios/{id}.estado` es `inactivo`. | [ ] Pasa  [ ] Falla |
+| A4.1 | Con al menos un cuestionario o simulacro creado por un estudiante después de que la aplicación guarda `fechaCreacion`, abrir `/admin/simulacros`. | Se listan los cuestionarios con las columnas Nombre (el `titulo`), Tipo ("Simulacro" o "Cuestionario"), Área (nombre del área; "Todas las áreas" en los simulacros), Creado (fecha y hora) y Estado ("activo" o "inactivo"), con la acción "Desactivar". Van ordenados del más reciente al más antiguo, de a 10, con el botón "Cargar más". Cada cuestionario que arma un estudiante al iniciar una prueba (también si lo abandona) aparece en la lista. | [ ] Pasa  [ ] Falla |
+| A4.2 | Como estudiante, iniciar un cuestionario por área; como administrador, recargar `/admin/simulacros`. | El cuestionario nuevo aparece en la primera fila, con Tipo "Cuestionario", el nombre del área elegida, la fecha y hora actuales y el Estado "activo". | [ ] Pasa  [ ] Falla |
+| A4.3 | Si hay más de 10 cuestionarios, tocar "Cargar más". | Se agrega la siguiente página sin repetir filas, manteniendo el orden por fecha descendente. | [ ] Pasa  [ ] Falla |
+| A4.4 | Tocar "Desactivar" en una fila y confirmar el aviso "¿Desactivar este simulacro?". | El estado cambia a "inactivo" y el botón queda deshabilitado; `cuestionarios/{id}.estado` es `inactivo`. La fila sigue en la lista. | [ ] Pasa  [ ] Falla |
+| A4.5 | Revisar si aparecen cuestionarios creados antes del PR #76 (sin campo `fechaCreacion` en Firestore). | **Comportamiento actual conocido:** no aparecen, porque la consulta ordena por `fechaCreacion` y Firestore omite los documentos que no tienen ese campo (decisión consciente: son descartables). Que no aparezcan es lo esperado, no un defecto; si la colección no tiene ningún cuestionario con `fechaCreacion`, se ve "No hay simulacros". | [ ] Pasa  [ ] Falla |
 
 **Cierre del módulo A4:**
 
@@ -376,10 +387,10 @@ Completar al terminar. Todo está vacío hasta que se ejecute.
 | 2. Práctica | [ ] Aprobado  [ ] Con fallas  [ ] Bloqueado | | | |
 | 3. Resultados y retroalimentación | [ ] Aprobado  [ ] Con fallas  [ ] Bloqueado | | | |
 | 4. Ranking | [ ] Aprobado  [ ] Con fallas  [ ] Bloqueado | | | |
-| 5. Estadísticas | [ ] Aprobado  [ ] Con fallas  [ ] Bloqueado | | | |
+| 5. Estadísticas e historial | [ ] Aprobado  [ ] Con fallas  [ ] Bloqueado | | | |
 | 6. Logros | [ ] Aprobado  [ ] Con fallas  [ ] Bloqueado | | | |
 | 7. Perfil | [ ] Aprobado  [ ] Con fallas  [ ] Bloqueado | | | |
-| 8. Configuración / Mi progreso (depende del PR #53) | [ ] Aprobado  [ ] Con fallas  [ ] Bloqueado | | | |
+| 8. Menú del Perfil (Mi progreso, contraseña y cerrar sesión) | [ ] Aprobado  [ ] Con fallas  [ ] Bloqueado | | | |
 | A1. Acceso del administrador y Dashboard | [ ] Aprobado  [ ] Con fallas  [ ] Bloqueado | | | |
 | A2. Usuarios | [ ] Aprobado  [ ] Con fallas  [ ] Bloqueado | | | |
 | A3. Preguntas | [ ] Aprobado  [ ] Con fallas  [ ] Bloqueado | | | |

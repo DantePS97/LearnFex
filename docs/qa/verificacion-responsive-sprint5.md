@@ -1,11 +1,11 @@
-# QA - Verificación responsive del Sprint 5: Resultados, Estadísticas, Ranking y Logros
+# QA - Verificación responsive del Sprint 5: Resultados, Estadísticas, Historial, Ranking y Logros
 
-Este documento valida el comportamiento responsive de las pantallas del Sprint 5 de LearnFex: Resultados (`Results.jsx`), Estadísticas (`Statistics.jsx`), Ranking (`Ranking.jsx`) y Logros (`Achievements.jsx`).
+Este documento valida el comportamiento responsive de las pantallas del Sprint 5 de LearnFex: Resultados (`Results.jsx`), Estadísticas (`Statistics.jsx`), Historial (`History.jsx`), Ranking (`Ranking.jsx`) y Logros (`Achievements.jsx`).
 
 - Estado del documento: plantilla de ejecución. Ningún caso fue ejecutado todavía; todas las casillas de resultado están vacías a propósito.
-- Verificado contra el código de `main` en el commit `f17a14c`. Si `main` cambió desde entonces, revisar los casos antes de ejecutarlos.
-- Autoría original del borrador: Juliana Martínez (PR #64). Corregido contra el código real: el borrador cubría Retroalimentación, Estadísticas y Ranking, y no cubría Resultados ni Logros.
-- Requisito que cubre (ERS): diseño adaptable a distintos tamaños de pantalla (RNF-010). El contenido funcional de estas pantallas (ranking, estadísticas) se verifica en `docs/qa/integracion-end-to-end.md`.
+- Verificado contra el código de `main` en el commit `c3d71aa`. Si `main` cambió desde entonces, revisar los casos antes de ejecutarlos.
+- Autoría original del borrador: Juliana Martínez (PR #64). Corregido contra el código real: el borrador cubría Retroalimentación, Estadísticas y Ranking, y no cubría Resultados ni Logros. Actualizado tras la migración de colores a tokens (PRs de CSS #50 a #52 y #73 a #75: cambios de color, sin cambios de layout ni de cortes; Ranking y Resultados pasaron de tema claro a oscuro) y tras agregar la pantalla Historial (PR #67).
+- Requisito que cubre (ERS): diseño adaptable a distintos tamaños de pantalla (RNF-010). El contenido funcional de estas pantallas (ranking, estadísticas, historial) se verifica en `docs/qa/integracion-end-to-end.md`.
 
 ---
 
@@ -15,11 +15,13 @@ Este documento valida el comportamiento responsive de las pantallas del Sprint 5
 
 ## Cómo está armada cada pantalla (resumen verificado en el código)
 
-- **Estadísticas (`/estadisticas`), Ranking (`/ranking`) y Logros (`/logros`)** están dentro de `StudentLayout`: tienen la barra superior y la inferior. Menos de 768 px: la barra superior muestra solo la marca y la barra inferior fija (70 px) tiene 5 elementos (Inicio, Práctica, Estadísticas, Ranking, Perfil). Desde 768 px: la barra superior muestra los 5 enlaces y no hay barra inferior. Logros no figura en esa navegación: se llega desde Perfil, botón "Logros".
+- **Estadísticas (`/estadisticas`), Historial (`/historial`), Ranking (`/ranking`) y Logros (`/logros`)** están dentro de `StudentLayout`: tienen la barra superior y la inferior. Menos de 768 px: la barra superior muestra solo la marca y la barra inferior fija (70 px) tiene 5 elementos (Inicio, Práctica, Estadísticas, Ranking, Perfil). Desde 768 px: la barra superior muestra los 5 enlaces y no hay barra inferior. Logros no figura en esa navegación: se llega desde Perfil, botón "Logros". Historial tampoco: se llega desde Práctica, botón "Historial" (que se oculta en 600 px o menos).
+- **Tema de color:** Resultados, Estadísticas, Historial y Ranking usan los tokens de `src/styles/variables.css` (superficies `--color-surface` y `--color-surface-alt`, texto blanco, acento celeste `--color-primary`) y se ven sobre fondo oscuro; Logros tiene colores propios, también oscuros. Ranking y Resultados antes tenían tema claro: al revisar cada caso, comprobar también que ningún texto quede ilegible por contraste (por ejemplo texto oscuro sobre fondo oscuro).
 - **Resultados (`/resultados/:id`)** está fuera de `StudentLayout` (`src/routes/AppRoutes.jsx`, flujo de resolución de pruebas): no tiene barra superior ni inferior en ningún ancho.
 - Cortes de CSS de cada pantalla:
   - Resultados: 768 px (la tarjeta principal pasa a columna, las 3 tarjetas de datos a 1 columna y los botones a columna de ancho completo) y 480 px (círculo de puntaje más chico).
   - Estadísticas: 950 px (las tarjetas pasan a 2 columnas) y 650 px (1 columna, encabezado en columna y botones de ancho completo).
+  - Historial: 720 px (el encabezado pasa a columna y cada fila pasa de una sola línea a un bloque: título y fecha arriba, tres datos iguales en el medio y estado con flecha abajo). Ancho máximo del contenido: 900 px.
   - Ranking: 850 px (el podio pasa a 1 columna, se oculta la fila de títulos de la tabla y se reduce la grilla de la fila) y 550 px (avatar y textos más chicos).
   - Logros: no tiene cortes propios; es una lista vertical centrada de ancho máximo 500 px.
 - Las barras de progreso de Estadísticas no son CSS propio de la pantalla: usan el componente compartido `ProgressBar` (`src/components/ProgressBar/ProgressBar.jsx`): nombre del área a la izquierda, porcentaje a la derecha y una pista de 10 px de alto con relleno proporcional. El color del relleno depende del valor (80% o más "success", 60% o más "primary", menos de 60% "danger").
@@ -32,7 +34,7 @@ Este documento valida el comportamiento responsive de las pantallas del Sprint 5
 | Mobile pequeño | 320 px | Que no haya desbordes horizontales (opcional) |
 | Tablet | 768 px | Primer ancho con barra superior con enlaces |
 | Desktop | 1280 px | Vista de escritorio |
-| Anchos de corte | 767, 650, 651, 550, 480, 850 y 951 px | Cambios de layout, según el caso |
+| Anchos de corte | 767, 720, 721, 650, 651, 550, 480, 850 y 951 px | Cambios de layout, según el caso |
 
 ## Precondiciones generales
 
@@ -61,7 +63,7 @@ Este documento valida el comportamiento responsive de las pantallas del Sprint 5
 
 ## Caso 1: Navegación según la pantalla y el ancho
 
-**Pantallas:** `/estadisticas`, `/ranking`, `/logros` y `/resultados/{id}`.
+**Pantallas:** `/estadisticas`, `/historial`, `/ranking`, `/logros` y `/resultados/{id}`.
 
 **Pasos:**
 
@@ -70,7 +72,7 @@ Este documento valida el comportamiento responsive de las pantallas del Sprint 5
 
 **Resultado esperado:**
 
-- Estadísticas, Ranking y Logros: hasta 767 px, barra superior con la marca y barra inferior fija; desde 768 px, barra superior con enlaces y sin barra inferior. En Estadísticas y Ranking el elemento correspondiente figura como activo. En Logros ninguno figura como activo (no está en la navegación).
+- Estadísticas, Historial, Ranking y Logros: hasta 767 px, barra superior con la marca y barra inferior fija; desde 768 px, barra superior con enlaces y sin barra inferior. En Estadísticas y Ranking el elemento correspondiente figura como activo. En Logros y en Historial ninguno figura como activo (no están en la navegación).
 - Resultados: sin barra superior ni inferior en todos los anchos (es lo diseñado).
 - En 375 px, el contenido final de las pantallas con barra inferior no queda tapado por ella.
 
@@ -282,10 +284,10 @@ Este documento valida el comportamiento responsive de las pantallas del Sprint 5
 
 **Resultado esperado:**
 
-- La fila del estudiante tiene fondo resaltado y avatar en color de acento.
+- La fila del estudiante se distingue de las demás: fondo `--color-surface-alt` (un tono más oscuro que el resto de la tabla) y avatar en el color primario (celeste). Comprobar que la diferencia se nota a simple vista; si no se distingue, anotarlo como hallazgo de contraste.
 - La insignia "Tú" aparece junto al nombre, legible y sin superponerse con el texto.
 - Un nombre largo no rompe el layout: no se sale de la tarjeta ni empuja otras columnas ni genera desplazamiento horizontal de la página.
-- La tarjeta del podio del estudiante lleva borde azul (no lleva la insignia "Tú", comportamiento actual).
+- La tarjeta del podio del estudiante lleva borde en el color primario (celeste; no lleva la insignia "Tú", comportamiento actual).
 
 **Resultado:**
 
@@ -346,6 +348,39 @@ Este documento valida el comportamiento responsive de las pantallas del Sprint 5
 **Resultado:**
 
 - 375 px: [ ] Pasa  [ ] Falla
+- 768 px: [ ] Pasa  [ ] Falla
+- 1280 px: [ ] Pasa  [ ] Falla
+- Fecha / Tester / Entorno:
+- Evidencia (captura, log o enlace):
+- Observaciones:
+
+---
+
+## Caso 12: Historial - lista de resultados y estado vacío
+
+**Pantalla:** `/historial` (se llega desde Práctica con el botón "Historial", visible desde 601 px, o escribiendo la URL).
+
+**Precondiciones:** estudiante con al menos 3 resultados guardados, de preferencia uno con 60% o más y otro con menos. Para el estado vacío hace falta una cuenta de estudiante sin ninguna prueba; si no hay, dejar ese paso sin marcar y explicarlo en Observaciones. El índice compuesto de `resultados` debe estar desplegado en el proyecto de pruebas (ver `docs/qa/integracion-end-to-end.md`, paso 5.12).
+
+**Pasos:**
+
+1. Abrir `/historial` en 1280, 769, 768, 721, 720 y 375 px. Observar el encabezado ("MI PROGRESO", "Historial", botón "Practicar") y las filas.
+2. En cada fila, ubicar: el título "Cuestionario" con la fecha, "Puntaje", "Correctas", "Incorrectas", la etiqueta de estado y la flecha.
+3. En escritorio, pasar el mouse sobre una fila y recorrer las filas con la tecla Tab.
+4. Con la cuenta sin pruebas, abrir `/historial` en 375 y 1280 px.
+
+**Resultado esperado:**
+
+- El contenido está centrado y no pasa de 900 px de ancho. Hay barra superior o inferior según el ancho, como en Estadísticas, y ningún elemento de la navegación figura como activo.
+- Desde 721 px el encabezado va en fila (título a la izquierda, "Practicar" a la derecha) y cada resultado ocupa una sola línea: título y fecha, los tres datos y el estado con la flecha.
+- Hasta 720 px el encabezado va en columna y cada resultado se acomoda en tres bloques: título y fecha arriba, "Puntaje", "Correctas" e "Incorrectas" en tres columnas iguales en el medio, y abajo el estado y la flecha en los extremos opuestos. No hay textos cortados ni desplazamiento horizontal de la página en ningún ancho.
+- Se distinguen los colores: "Correctas" en verde, "Incorrectas" en rojo, "Aprobado" verde y "No aprobado" rojo, todos legibles sobre el fondo oscuro. Al pasar el mouse la fila se levanta un poco y su borde toma el color primario; con Tab se ve el contorno de foco.
+- Estado vacío: una tarjeta centrada (hasta 480 px de ancho) con el icono, el título "Historial", el texto "Todavía no completaste ningún cuestionario" y el botón "Realizar cuestionario", sin cortes en 375 px.
+
+**Resultado:**
+
+- 375 px: [ ] Pasa  [ ] Falla
+- 720 / 721 px: [ ] Pasa  [ ] Falla
 - 768 px: [ ] Pasa  [ ] Falla
 - 1280 px: [ ] Pasa  [ ] Falla
 - Fecha / Tester / Entorno:

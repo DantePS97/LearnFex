@@ -3,8 +3,8 @@
 Este documento valida el comportamiento responsive de las pantallas de Práctica (`Practice.jsx`) y del cuestionario o simulacro en curso (`Quiz.jsx`) de LearnFex.
 
 - Estado del documento: plantilla de ejecución. Ningún caso fue ejecutado todavía; todas las casillas de resultado están vacías a propósito.
-- Verificado contra el código de `main` en el commit `f17a14c`. Si `main` cambió desde entonces, revisar los casos antes de ejecutarlos.
-- Autoría original del borrador: Juliana Martínez (PR #63). Corregido contra el código real.
+- Verificado contra el código de `main` en el commit `c3d71aa`. Si `main` cambió desde entonces, revisar los casos antes de ejecutarlos.
+- Autoría original del borrador: Juliana Martínez (PR #63). Corregido contra el código real y actualizado tras el seed de 40 preguntas (PR #65), el botón "Historial" hacia `/historial` (PR #67) y la migración de colores de `Practice.css` y `Quiz.css` a tokens (PRs de CSS #50 a #52 y #73 a #75: cambios de color, sin cambios de layout ni de cortes).
 - Requisito que cubre (ERS): diseño adaptable a distintos tamaños de pantalla (RNF-010) y temporizador visible durante la prueba (RF-009).
 
 ---
@@ -33,10 +33,10 @@ Este es el punto que más se prestaba a error, así que conviene tenerlo claro a
 
 ## Precondiciones generales
 
-- Aplicación corriendo con `npm run dev`, con datos del seed cargados (5 áreas, 20 preguntas) y la función `calificarPrueba` desplegada.
+- Aplicación corriendo con `npm run dev`, con datos del seed cargados (5 áreas, 40 preguntas; si el proyecto tenía el seed anterior, volver a ejecutar `scripts/seed-preguntas.js`) y la función `calificarPrueba` desplegada.
 - Sesión iniciada como estudiante.
 - Navegador con DevTools: modo "Toggle Device Toolbar" en "Responsive", escribiendo el ancho exacto; repetir con el redimensionado manual de la ventana. Anotar siempre el ancho exacto donde algo falla.
-- Cuestionario por área: se inicia tocando un área en `/practica`. Simulacro (20 preguntas): no tiene botón; se inicia escribiendo `/practica/cuestionario` en la barra de direcciones.
+- Cuestionario por área (8 preguntas con el seed): se inicia tocando un área en `/practica`. Simulacro (30 preguntas con el seed): no tiene botón; se inicia escribiendo `/practica/cuestionario` en la barra de direcciones.
 - Al probar los casos del cuestionario, no finalizar si no hace falta (salir con la navegación del navegador).
 
 ## Datos de la ejecución
@@ -98,8 +98,8 @@ Este es el punto que más se prestaba a error, así que conviene tenerlo claro a
 **Resultado esperado:**
 
 - Desde 601 px los dos botones se ven alineados a la derecha del título, sin cortarse ni solaparse con él.
-- Hasta 600 px los dos botones se ocultan (comportamiento actual por CSS); el título sigue completo y legible.
-- "Historial" navega a `/estadisticas`. "+ Nueva práctica" abre el cuestionario del primer área de la lista filtrada (no un simulacro).
+- Hasta 600 px los dos botones se ocultan (comportamiento actual por CSS); el título sigue completo y legible. Consecuencia: en 600 px o menos no hay ningún acceso desde la interfaz a `/historial` (este botón es el único enlace a esa pantalla).
+- "Historial" navega a `/historial` (la pantalla de resultados anteriores, no `/estadisticas`). "+ Nueva práctica" abre el cuestionario del primer área de la lista filtrada (no un simulacro).
 
 **Resultado:**
 
@@ -230,19 +230,19 @@ Este es el punto que más se prestaba a error, así que conviene tenerlo claro a
 
 ## Caso 7: Cuestionario - botones y navegación de preguntas
 
-**Pantalla:** `/practica/cuestionario`, cuestionario por área (4 preguntas) y simulacro (20 preguntas).
+**Pantalla:** `/practica/cuestionario`, cuestionario por área (8 preguntas) y simulacro (30 preguntas).
 
 **Pasos:**
 
 1. En 1280, 768, 430 y 375 px, observar los botones "Anterior" y "Siguiente", y en la última pregunta "Finalizar".
-2. Observar la "Navegación de preguntas" (números y leyenda "Respondida" / "Sin responder") en el simulacro de 20 preguntas.
+2. Observar la "Navegación de preguntas" (números y leyenda "Respondida" / "Sin responder") en el simulacro de 30 preguntas.
 3. Responder algunas preguntas y comprobar que los números cambian a "respondida" y que se puede saltar tocando un número.
 
 **Resultado esperado:**
 
 - Los botones son accesibles (no quedan fuera de pantalla ni tapados). "Anterior" está deshabilitado en la primera pregunta.
 - En 430 px o menos, "Anterior" y "Siguiente" se reparten el ancho de la fila.
-- Los 20 números de la navegación se acomodan en varias filas sin salirse del contenedor ni generar desplazamiento horizontal. En 700 px o menos, el título y la leyenda se apilan en vertical.
+- Los 30 números de la navegación del simulacro (8 en un cuestionario por área) se acomodan en varias filas sin salirse del contenedor ni generar desplazamiento horizontal. En 700 px o menos, el título y la leyenda se apilan en vertical.
 - La leyenda se lee completa y los colores de respondida y sin responder se distinguen.
 
 **Resultado:**
@@ -295,4 +295,4 @@ Completar al terminar. Todo está vacío hasta que se ejecute.
 - Ejecutar las pruebas con `npm run dev`.
 - Usar DevTools, "Toggle Device Toolbar" en modo Responsive, y revisar también con el redimensionado manual.
 - Documentar los errores con precisión (píxeles exactos) y adjuntar capturas.
-- Las pantallas de Resultados, Estadísticas, Ranking y Logros se cubren en `docs/qa/verificacion-responsive-sprint5.md`. La pantalla de Retroalimentación no está cubierta por ninguno de los dos documentos.
+- Las pantallas de Resultados, Estadísticas, Historial, Ranking y Logros se cubren en `docs/qa/verificacion-responsive-sprint5.md`. La pantalla de Retroalimentación no está cubierta por ninguno de los dos documentos.

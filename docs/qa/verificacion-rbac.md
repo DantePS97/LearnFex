@@ -3,8 +3,8 @@
 Este documento valida que el control de acceso de LearnFex funcione en dos niveles: las rutas de la aplicación (qué pantallas puede abrir cada rol) y los datos de Firestore (qué puede leer y escribir cada rol según `firestore.rules`).
 
 - Estado del documento: plantilla de ejecución. Ningún caso fue ejecutado todavía; todas las casillas de resultado están vacías a propósito.
-- Verificado contra el código de `main` en el commit `f17a14c`. Si `main` cambió desde entonces, revisar los casos antes de ejecutarlos.
-- Autoría original del borrador: Juliana Martínez (PR #62). El borrador estaba cortado en el caso 2; este documento lo completa.
+- Verificado contra el código de `main` en el commit `c3d71aa`. Si `main` cambió desde entonces, revisar los casos antes de ejecutarlos.
+- Autoría original del borrador: Juliana Martínez (PR #62). El borrador estaba cortado en el caso 2; este documento lo completa. Actualizado tras agregar la ruta `/historial` (PR #67) y el cierre de sesión en Perfil (PR #53).
 - Requisitos que cubre (ERS): acceso restringido según el rol con reglas de seguridad de Firestore (RNF-005), protección de los datos personales y del historial de resultados (RNF-006), gestión de usuarios por el administrador (RF-020) y el inicio de sesión que dirige al panel según el rol (RF-002).
 
 ---
@@ -14,13 +14,13 @@ Este documento valida que el control de acceso de LearnFex funcione en dos nivel
 Rutas (`src/routes/AppRoutes.jsx`):
 
 - Públicas: `/` (inicio de sesión), `/registro`, `/recuperar-contrasena`.
-- Estudiante y administrador con sesión (`PrivateRoutes`): `/inicio`, `/practica`, `/estadisticas`, `/ranking`, `/logros`, `/perfil` (dentro del layout del estudiante) y `/practica/cuestionario`, `/resultados/:id`, `/resultados/:id/retroalimentacion` (fuera de ese layout). `PrivateRoutes` solo exige tener sesión: no distingue rol.
+- Estudiante y administrador con sesión (`PrivateRoutes`): `/inicio`, `/practica`, `/estadisticas`, `/historial`, `/ranking`, `/logros`, `/perfil` (dentro del layout del estudiante) y `/practica/cuestionario`, `/resultados/:id`, `/resultados/:id/retroalimentacion` (fuera de ese layout). `PrivateRoutes` solo exige tener sesión: no distingue rol.
 - Solo administrador (`AdminRoute`): `/admin`, `/admin/usuarios`, `/admin/preguntas`, `/admin/reportes`, `/admin/simulacros`, `/admin/configuracion`, `/admin/logros`.
 - Sin sesión, ambas guardas redirigen a `/`. Con sesión pero sin rol `administrador`, `AdminRoute` redirige a `/inicio` (no existe una ruta `/home`).
 - No hay ruta comodín: una URL inexistente (por ejemplo `/home`) muestra una pantalla en blanco, sin página 404.
 - El rol sale del campo `rol` del documento `usuarios/{uid}`, que `AuthContext` carga una sola vez al iniciar sesión o recargar la página.
 - Al iniciar sesión, `Login.jsx` navega a `/admin` si el rol es `administrador` y a `/inicio` en cualquier otro caso (también si falla la lectura del perfil).
-- En `main` no hay botón de "Cerrar sesión" en la interfaz (existe `logout` en `authServices.js`, pero nadie lo usa; el PR #53, sin mergear, lo agrega en Perfil). Para probar otra cuenta usar ventanas privadas o borrar los datos del sitio.
+- El botón "Cerrar sesión" está solo en Perfil (`/perfil`): pide confirmación (`window.confirm`), llama a `authServices.logout()` y navega a `/`. El panel de administración no tiene botón propio; un administrador puede cerrar sesión entrando a `/perfil` (ver el caso 6). Para probar otra cuenta se puede usar ese botón o ventanas privadas distintas.
 
 Datos (`firestore.rules`), resumen:
 
@@ -79,7 +79,7 @@ Hoy `firestore.rules` todavía deja que un estudiante suba su propio XP y nivel 
 
 **Pasos:**
 
-1. Abrir directamente cada una de estas URL: `/inicio`, `/practica`, `/estadisticas`, `/ranking`, `/logros`, `/perfil`, `/practica/cuestionario`, `/resultados/cualquier_id`, `/resultados/cualquier_id/retroalimentacion`.
+1. Abrir directamente cada una de estas URL: `/inicio`, `/practica`, `/estadisticas`, `/historial`, `/ranking`, `/logros`, `/perfil`, `/practica/cuestionario`, `/resultados/cualquier_id`, `/resultados/cualquier_id/retroalimentacion`.
 2. En cada una, observar la pantalla, la URL final y la pestaña Red de DevTools.
 
 **Resultado esperado:**
@@ -201,11 +201,11 @@ Hoy `firestore.rules` todavía deja que un estudiante suba su propio XP y nivel 
 
 **Pasos:**
 
-1. Escribir `/inicio`, `/practica`, `/ranking` y `/perfil` en la barra de direcciones.
+1. Escribir `/inicio`, `/practica`, `/historial`, `/ranking` y `/perfil` en la barra de direcciones.
 
 **Resultado esperado (comportamiento actual):**
 
-- Las cuatro pantallas se abren con normalidad. Si la especificación del producto exige separar totalmente al administrador de las pantallas del estudiante, anotarlo en Observaciones como brecha.
+- Las cinco pantallas se abren con normalidad (en `/perfil` también está el botón "Cerrar sesión", que es la única forma de cerrar sesión desde la interfaz siendo administrador). Si la especificación del producto exige separar totalmente al administrador de las pantallas del estudiante, anotarlo en Observaciones como brecha.
 
 **Resultado:**
 
@@ -366,7 +366,7 @@ Preparación: A y B tienen al menos un resultado cada uno (`resultados/{cuestion
 | 1 | Abrir en la app `/resultados/{idDeA}` | A | Se ve el resultado | Igual | [ ] Pasa  [ ] Falla |
 | 2 | `get` de `resultados/{idDeB}` (en la app: abrir `/resultados/{idDeB}`) | A | Denegado; la pantalla muestra "Ocurrió un error" y "No se pudo cargar el resultado." | Igual | [ ] Pasa  [ ] Falla |
 | 3 | En la app, abrir `/resultados/{idDeB}/retroalimentacion` | A | Denegado; la pantalla muestra "No se pudo cargar la retroalimentación." | Igual | [ ] Pasa  [ ] Falla |
-| 4 | `list` de `resultados` con filtro `usuarioId == A` (la pantalla Estadísticas) | A | Permitido | Igual | [ ] Pasa  [ ] Falla |
+| 4 | `list` de `resultados` con filtro `usuarioId == A` (las pantallas Estadísticas e Historial; esta consulta además ordena por `fecha` y necesita el índice compuesto de `firestore.indexes.json`, que el emulador no exige) | A | Permitido | Igual | [ ] Pasa  [ ] Falla |
 | 5 | `list` de `resultados` sin filtro | A | Denegado | Igual | [ ] Pasa  [ ] Falla |
 | 6 | `get` y `list` de `resultados/{idDeB}/respuestas` filtrando por `usuarioId == B` | A | Denegado | Igual | [ ] Pasa  [ ] Falla |
 | 7 | `get` y `list` de `resultados/{idDeA}/respuestas` filtrando por `usuarioId == A` | A | Permitido | Igual | [ ] Pasa  [ ] Falla |
@@ -498,7 +498,7 @@ Estas son consecuencia directa del código actual de `firestore.rules` y de la a
 3. `preguntas` expone `respuestaCorrecta` a cualquier estudiante (caso 11).
 4. `cuestionarios` y `estadisticas_plataforma` aceptan `create` de cualquier usuario con sesión sin validar contenido (casos 12 y 16).
 5. `estado: inactivo` no restringe el acceso (caso 18).
-6. No hay página 404 y no hay botón de cerrar sesión en `main` (casos 7 y precondiciones).
+6. No hay página 404 (caso 7). El panel de administración no tiene botón de cerrar sesión propio: el administrador solo puede cerrar sesión entrando a `/perfil` (caso 6).
 
 ## Notas finales
 
