@@ -9,8 +9,8 @@
 
   box-sizing: border-box;
 
-  background: #0f172a;
-  color: #f8fafc;
+  background: var(--color-bg);
+  color: var(--color-text);
 
   font-family:
     Inter,
@@ -42,7 +42,7 @@
 .estadistica-label {
   margin: 0 0 7px;
 
-  color: #60a5fa;
+  color: var(--color-primary);
 
   font-size: 11px;
   font-weight: 700;
@@ -62,9 +62,9 @@
 
   margin: 9px 0 0;
 
-  color: #94a3b8;
+  color: var(--color-text-muted);
 
-  font-size: 14px;
+  font-size: var(--font-size-base);
   line-height: 1.6;
 }
 
@@ -74,20 +74,21 @@
   border: none;
   border-radius: 9px;
 
-  background: #2563eb;
-  color: #ffffff;
+  background: var(--color-primary);
+  color: var(--color-bg);
 
-  font-size: 13px;
+  font-size: var(--font-size-sm);
   font-weight: 600;
 
   cursor: pointer;
 
-  transition: 0.2s ease;
+  transition: var(--transition-base);
 }
 
 .estadistica-practice-button:hover {
-  background: #1d4ed8;
+  background: var(--color-primary-alt);
   transform: translateY(-1px);
+  color: var(--color-text);
 }
 
 
@@ -104,52 +105,52 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
 
-  gap: 16px;
+  gap: var(--space-lg);
 }
 
 .estadistica-card {
   padding: 20px;
 
-  border: 1px solid #263449;
+  border: 1px solid var(--color-border-alt);
   border-radius: 15px;
 
-  background: #172033;
+  background: var(--color-surface-alt);
 
   transition:
-    transform 0.2s ease,
-    border-color 0.2s ease;
+    transform var(--transition-base),
+    border-color var(--transition-base);
 }
 
 .estadistica-card:hover {
   transform: translateY(-3px);
 
-  border-color: #3b82f6;
+  border-color: var(--color-primary);
 }
 
 .estadistica-card-top {
   display: flex;
   align-items: center;
 
-  gap: 10px;
+  gap: var(--space-xs);
 
-  color: #94a3b8;
+  color: var(--color-text-muted);
 
-  font-size: 13px;
+  font-size: var(--font-size-sm);
 }
 
 .estadistica-card-icon {
   width: 38px;
   height: 38px;
 
-  border-radius: 10px;
+  border-radius: var(--radius-md);
 
-  background: #1e293b;
+  background: var(--color-surface-hover);
 
   display: flex;
   align-items: center;
   justify-content: center;
 
-  color: #60a5fa;
+  color: var(--color-primary);
 
   font-size: 16px;
   font-weight: 700;
@@ -160,7 +161,7 @@
 
   margin-top: 18px;
 
-  color: #f8fafc;
+  color: var(--color-text);
 
   font-size: 28px;
   line-height: 1;
@@ -169,9 +170,9 @@
 .estadistica-card p {
   margin: 8px 0 0;
 
-  color: #64748b;
+  color: var(--color-text-faint);
 
-  font-size: 12px;
+  font-size: var(--font-size-xs);
 }
 
 
@@ -205,30 +206,30 @@
 .estadistica-section-header p {
   margin: 0;
 
-  color: #64748b;
+  color: var(--color-text-faint);
 
-  font-size: 13px;
+  font-size: var(--font-size-sm);
 }
 
 .estadistica-link-button {
   padding: 8px 13px;
 
-  border: 1px solid #334155;
-  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
 
   background: transparent;
-  color: #94a3b8;
+  color: var(--color-text-muted);
 
-  font-size: 12px;
+  font-size: var(--font-size-xs);
 
   cursor: pointer;
 
-  transition: 0.2s ease;
+  transition: var(--transition-base);
 }
 
 .estadistica-link-button:hover {
-  background: #1e293b;
-  color: #f8fafc;
+  background: var(--color-surface-hover);
+  color: var(--color-text);
 }
 
 
@@ -239,16 +240,16 @@
 .estadistica-progress-list {
   padding: 5px 22px;
 
-  border: 1px solid #263449;
+  border: 1px solid var(--color-border-alt);
   border-radius: 15px;
 
-  background: #172033;
+  background: var(--color-surface-alt);
 }
 
 .estadistica-progress-item {
   padding: 18px 0;
 
-  border-bottom: 1px solid #263449;
+  border-bottom: 1px solid var(--color-border-alt);
 }
 
 .estadistica-progress-item:last-child {
@@ -264,15 +265,15 @@
 }
 
 .estadistica-progress-info strong {
-  color: #e2e8f0;
+  color: var(--color-text-secondary);
 
-  font-size: 13px;
+  font-size: var(--font-size-sm);
 }
 
 .estadistica-progress-info span {
-  color: #94a3b8;
+  color: var(--color-text-muted);
 
-  font-size: 12px;
+  font-size: var(--font-size-xs);
 }
 
 .estadistica-progress-bar {
@@ -283,7 +284,7 @@
 
   border-radius: 20px;
 
-  background: #0f172a;
+  background: var(--color-bg);
 }
 
 .estadistica-progress-fill {
@@ -291,7 +292,7 @@
 
   border-radius: 20px;
 
-  background: #3b82f6;
+  background: var(--color-primary);
 
   transition: width 0.5s ease;
 }
@@ -304,10 +305,10 @@
 .estadistica-results {
   overflow: hidden;
 
-  border: 1px solid #263449;
+  border: 1px solid var(--color-border-alt);
   border-radius: 15px;
 
-  background: #172033;
+  background: var(--color-surface-alt);
 }
 
 .estadistica-result {
@@ -317,7 +318,7 @@
   align-items: center;
   justify-content: space-between;
 
-  border-bottom: 1px solid #263449;
+  border-bottom: 1px solid var(--color-border-alt);
 }
 
 .estadistica-result:last-child {
@@ -335,15 +336,15 @@
   width: 40px;
   height: 40px;
 
-  border-radius: 10px;
+  border-radius: var(--radius-md);
 
-  background: #1e293b;
+  background: var(--color-surface-hover);
 
   display: flex;
   align-items: center;
   justify-content: center;
 
-  color: #60a5fa;
+  color: var(--color-primary);
 
   font-size: 15px;
   font-weight: 700;
@@ -354,26 +355,26 @@
 
   margin-bottom: 4px;
 
-  color: #e2e8f0;
+  color: var(--color-text-secondary);
 
-  font-size: 14px;
+  font-size: var(--font-size-base);
 }
 
 .estadistica-result-info span {
-  color: #64748b;
+  color: var(--color-text-faint);
 
-  font-size: 12px;
+  font-size: var(--font-size-xs);
 }
 
 .estadistica-result-score {
   display: flex;
   align-items: center;
 
-  gap: 12px;
+  gap: var(--space-sm);
 }
 
 .estadistica-result-score span {
-  color: #64748b;
+  color: var(--color-text-faint);
 
   font-size: 11px;
 }
@@ -383,11 +384,11 @@
 
   text-align: right;
 
-  font-size: 14px;
+  font-size: var(--font-size-base);
 }
 
 .estadistica-result-good {
-  color: #4ade80;
+  color: var(--color-success);
 }
 
 .estadistica-result-medium {
@@ -395,7 +396,7 @@
 }
 
 .estadistica-result-low {
-  color: #f87171;
+  color: var(--color-error);
 }
 
 
@@ -417,7 +418,7 @@
 }
 
 .estadistica-empty span {
-  margin-bottom: 10px;
+  margin-bottom: var(--space-xs);
 
   font-size: 28px;
 }
@@ -425,9 +426,9 @@
 .estadistica-empty p {
   margin: 0 0 15px;
 
-  color: #64748b;
+  color: var(--color-text-faint);
 
-  font-size: 13px;
+  font-size: var(--font-size-sm);
 }
 
 
@@ -436,22 +437,23 @@
 ========================================================= */
 
 .estadistica-button {
-  padding: 10px 16px;
+  padding: var(--space-xs) var(--space-lg);
 
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 
-  background: #2563eb;
-  color: #ffffff;
+  background: var(--color-primary);
+  color: var(--color-bg);
 
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   font-weight: 600;
 
   cursor: pointer;
 }
 
 .estadistica-button:hover {
-  background: #1d4ed8;
+  background: var(--color-primary-alt);
+  color: var(--color-text);
 }
 
 
@@ -468,15 +470,15 @@
 
   box-sizing: border-box;
 
-  border: 1px solid #263449;
+  border: 1px solid var(--color-border-alt);
   border-radius: 15px;
 
-  background: #172033;
+  background: var(--color-surface-alt);
 
   display: flex;
   align-items: center;
 
-  gap: 16px;
+  gap: var(--space-lg);
 }
 
 .estadistica-tip-icon {
@@ -487,7 +489,7 @@
 
   border-radius: 11px;
 
-  background: #1e293b;
+  background: var(--color-surface-hover);
 
   display: flex;
   align-items: center;
@@ -509,31 +511,31 @@
 .estadistica-tip p {
   margin: 0;
 
-  color: #64748b;
+  color: var(--color-text-faint);
 
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   line-height: 1.5;
 }
 
 .estadistica-tip-button {
-  padding: 9px 16px;
+  padding: 9px var(--space-lg);
 
-  border: 1px solid #334155;
-  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
 
-  background: #1e293b;
-  color: #e2e8f0;
+  background: var(--color-surface-hover);
+  color: var(--color-text-secondary);
 
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   font-weight: 600;
 
   cursor: pointer;
 }
 
 .estadistica-tip-button:hover {
-  background: #2563eb;
-  border-color: #2563eb;
-  color: #ffffff;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-bg);
 }
 
 
@@ -549,7 +551,7 @@
   align-items: center;
   justify-content: center;
 
-  color: #94a3b8;
+  color: var(--color-text-muted);
 }
 
 .estadistica-spinner {
@@ -558,8 +560,8 @@
 
   margin-bottom: 15px;
 
-  border: 3px solid #263449;
-  border-top-color: #3b82f6;
+  border: 3px solid var(--color-border-alt);
+  border-top-color: var(--color-primary);
 
   border-radius: 50%;
 
@@ -584,10 +586,10 @@
 
   padding: 35px;
 
-  border: 1px solid #263449;
+  border: 1px solid var(--color-border-alt);
   border-radius: 15px;
 
-  background: #172033;
+  background: var(--color-surface-alt);
 
   text-align: center;
 }
@@ -600,13 +602,13 @@
 
   border-radius: 50%;
 
-  background: #3f1d2e;
+  background: var(--color-error-bg);
 
   display: flex;
   align-items: center;
   justify-content: center;
 
-  color: #f87171;
+  color: var(--color-error);
 
   font-size: 20px;
   font-weight: 700;
@@ -615,15 +617,15 @@
 .estadistica-error h2 {
   margin: 0 0 8px;
 
-  font-size: 18px;
+  font-size: var(--font-size-lg);
 }
 
 .estadistica-error p {
   margin: 0 0 20px;
 
-  color: #94a3b8;
+  color: var(--color-text-muted);
 
-  font-size: 13px;
+  font-size: var(--font-size-sm);
 }
 
 
@@ -675,7 +677,7 @@
   }
 
   .estadistica-result {
-    gap: 10px;
+    gap: var(--space-xs);
   }
 
   .estadistica-result-score {
