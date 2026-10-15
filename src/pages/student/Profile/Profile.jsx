@@ -1,8 +1,10 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../../../hooks/useAuth";
 import * as userService from "../../../services/userService";
+import * as authServices from "../../../services/authServices";
 import Input from "../../../components/Input/Input";
 import Button from "../../../components/Button/Button";
 import Loader from "../../../components/Loader/Loader";
@@ -18,6 +20,7 @@ function Profile() {
 	const [guardando, setGuardando] = useState(false);
 	const [guardado, setGuardado] = useState(false);
 	const [error, setError] = useState("");
+	const [passwordEnviada, setPasswordEnviada] = useState(false);
 
 	useEffect(() => {
 		if (profile) {
@@ -48,6 +51,37 @@ function Profile() {
 			setError("No se pudieron guardar los cambios, intentá de nuevo");
 		} finally {
 			setGuardando(false);
+		}
+	};
+
+	const handleChangePassword = async () => {
+		setPasswordEnviada(false);
+		setError("");
+
+		try {
+			await authServices.resetPassword(profile.correo);
+			setPasswordEnviada(true);
+		} catch {
+			setError(
+				"No se pudo enviar el correo para cambiar la contraseña, intentá de nuevo"
+			);
+		}
+	};
+
+	const handleLogout = async () => {
+		const confirmar = window.confirm(
+			"¿Estás seguro de que querés cerrar sesión?"
+		);
+
+		if (!confirmar) {
+			return;
+		}
+
+		try {
+			await authServices.logout();
+			navigate("/");
+		} catch {
+			setError("No se pudo cerrar sesión, intentá de nuevo");
 		}
 	};
 
@@ -85,11 +119,42 @@ function Profile() {
 				>
 					🏅 Logros
 				</button>
+
+				<button
+					type="button"
+					className="profile-menu-item"
+					onClick={() => navigate("/estadisticas")}
+				>
+					📊 Mi progreso
+				</button>
+
+				<button
+					type="button"
+					className="profile-menu-item"
+					onClick={handleChangePassword}
+				>
+					⚙️ Configuración
+				</button>
+
+				<button
+					type="button"
+					className="profile-menu-item"
+					onClick={handleLogout}
+				>
+					🚪 Cerrar sesión
+				</button>
 			</section>
 
 			{guardado && (
 				<p className="profile-success">Cambios guardados correctamente</p>
 			)}
+
+			{passwordEnviada && (
+				<p className="profile-success">
+					Te enviamos un correo para cambiar tu contraseña
+				</p>
+			)}
+
 			{error && <p className="profile-error">{error}</p>}
 
 			<form className="profile-form" onSubmit={handleSubmit}>
