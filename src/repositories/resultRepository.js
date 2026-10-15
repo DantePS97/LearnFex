@@ -5,36 +5,10 @@ import {
   getDocs,
   orderBy,
   query,
-  serverTimestamp,
   where,
-  writeBatch,
 } from "firebase/firestore";
 
 import { db } from "../config/firebase";
-
-export const crearResultado = async (datosResultado, respuestas) => {
-  const batch = writeBatch(db);
-
-  const resultadoRef = doc(collection(db, "resultados"));
-
-  batch.set(resultadoRef, {
-    ...datosResultado,
-    fecha: serverTimestamp(),
-  });
-
-  respuestas.forEach((respuesta) => {
-    const respuestaRef = doc(collection(resultadoRef, "respuestas"));
-
-    batch.set(respuestaRef, {
-      ...respuesta,
-      usuarioId: datosResultado.usuarioId,
-    });
-  });
-
-  await batch.commit();
-
-  return resultadoRef.id;
-};
 
 export const getResultadosByUsuario = async (usuarioId) => {
   const ref = query(
