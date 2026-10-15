@@ -3,8 +3,8 @@
 Este documento describe los casos de prueba para validar la calificación de pruebas y el sistema de gamificación (XP, nivel, ranking y logros) de LearnFex.
 
 - Estado del documento: plantilla de ejecución. Ningún caso fue ejecutado todavía; todas las casillas de resultado están vacías a propósito.
-- Verificado contra el código de `main` en el commit `f17a14c`. Si `main` cambió desde entonces, revisar los casos antes de ejecutarlos.
-- Autoría original del borrador: Juliana Martínez (PR #59). Corregido contra el código real.
+- Verificado contra el código de `main` en el commit `c3d71aa`. Si `main` cambió desde entonces, revisar los casos antes de ejecutarlos.
+- Autoría original del borrador: Juliana Martínez (PR #59). Corregido contra el código real y actualizado tras el cambio del seed a 40 preguntas (PR #65) y el menú completo de Perfil (PR #53).
 - Requisitos que cubre (ERS 3.1.2 y 3.1.4): calificación automática de cuestionarios y simulacros (RF-010), XP por completar pruebas (RF-015), niveles y logros (RF-016), ranking (RF-017).
 
 ---
@@ -20,7 +20,7 @@ Conocer esto evita marcar como defecto un comportamiento que es correcto.
 - Nivel: `max(floor(xp / 1000) + 1, nivelActual)`. El nivel nunca baja.
 - Logros del seed: `primer_quiz` ("Primer paso", al completar la 1.ª prueba), `cinco_simulacros` ("Estudiante dedicado", 5 pruebas), `diez_simulacros` ("Maestro de las áreas", 10 pruebas). Se cuentan los resultados guardados, sin importar cuántas respuestas fueron correctas ni si fue cuestionario o simulacro.
 - El ranking (`ranking/{uid}`) lo escribe la misma función: `puntajeAcumulado` es igual al XP del estudiante.
-- Los logros se ven en `/logros` (se llega desde Perfil, botón "Logros"; no está en la barra de navegación). El Perfil muestra solo correo, rol, XP y nivel.
+- Los logros se ven en `/logros` (se llega desde Perfil, botón "Logros"; no está en la barra de navegación). El Perfil muestra correo, rol, XP y nivel, el menú (Logros, Mi progreso, Configuración, Cerrar sesión) y el formulario de datos personales; no lista logros.
 - El resultado se guarda con ID determinista `{cuestionarioId}_{uid}`. Reenviar la misma prueba devuelve `already-exists` y el cliente navega a `/resultados/{cuestionarioId}_{uid}`.
 
 ## Hallazgo de seguridad vigente
@@ -33,7 +33,8 @@ Hoy `firestore.rules` todavía permite que un estudiante suba su propio XP (hast
 
 - Aplicación corriendo con `npm run dev`, apuntando a un proyecto de Firebase de pruebas (nunca datos reales).
 - Función `calificarPrueba` desplegada en ese proyecto. Si no lo está, al finalizar una prueba aparece "No se pudo calificar el cuestionario.".
-- Datos cargados con `scripts/seed-preguntas.js`: 5 áreas, 20 preguntas (4 por área) y los 3 logros. Con ese banco, un cuestionario por área tiene 4 preguntas y el simulacro tiene 20.
+- Datos cargados con `scripts/seed-preguntas.js`: 5 áreas, 40 preguntas (8 por área: 2 de dificultad baja, 3 media y 3 alta) y los 3 logros. Si el proyecto de pruebas ya tenía el seed anterior (20 preguntas), volver a ejecutar el script: usa IDs fijos (`seed_1` a `seed_40`) y `setDoc`, así que sobrescribe las áreas (con `numPreguntas: 6`) y agrega las preguntas nuevas.
+- Con ese banco, un cuestionario por área tiene 8 preguntas (pide 10 y el área solo tiene 8: `quizService.js` usa `cantidad = 10` por defecto y `Practice.jsx` no pasa otra cantidad; el campo `numPreguntas` del área no se usa en el cuestionario por área). El simulacro tiene 30 preguntas (6 de cada una de las 5 áreas, según `numPreguntas`) y dura 95 minutos.
 - Una cuenta de estudiante de prueba nueva (XP 0, nivel 1, sin resultados ni logros). Para repetir casos, crear otra cuenta en `/registro`.
 - Acceso de lectura a la consola de Firestore. Algunos casos piden editar `usuarios/{uid}` a mano: hacerlo solo en el proyecto de pruebas y con cuentas de prueba.
 - Cómo conocer la respuesta correcta de cada pregunta: campo `respuestaCorrecta` (una letra A-D) en la colección `preguntas` de la consola, o en `scripts/seed-preguntas.js`. Las preguntas se muestran en orden aleatorio: identificarlas por el enunciado.
@@ -67,15 +68,15 @@ Hoy `firestore.rules` todavía permite que un estudiante suba su propio XP (hast
 **Pasos:**
 
 1. Ir a Práctica y tocar el área Matemáticas.
-2. Responder 3 preguntas correctamente y 1 incorrectamente (el cuestionario tiene 4).
+2. Responder 6 preguntas correctamente y 2 incorrectamente (el cuestionario tiene 8).
 3. En la última pregunta, tocar "Finalizar".
 
 **Resultado esperado:**
 
 - Se navega a `/resultados/{cuestionarioId}_{uid}`.
-- El puntaje mostrado es `75%` (no `3`), con "Preguntas: 4", "Correctas: 3" e "Incorrectas: 1".
+- El puntaje mostrado es `75%` (no `6`), con "Preguntas: 8", "Correctas: 6" e "Incorrectas: 2".
 - La etiqueta de estado es "Aprobado" (el umbral es 60%).
-- En Firestore, `resultados/{cuestionarioId}_{uid}` tiene `puntaje: 75`, `respuestasCorrectas: 3` y `respuestasIncorrectas: 1`.
+- En Firestore, `resultados/{cuestionarioId}_{uid}` tiene `puntaje: 75`, `respuestasCorrectas: 6` y `respuestasIncorrectas: 2`.
 
 **Resultado:**
 
@@ -92,14 +93,14 @@ Hoy `firestore.rules` todavía permite que un estudiante suba su propio XP (hast
 
 **Pasos:**
 
-1. Iniciar un cuestionario por área (4 preguntas).
+1. Iniciar un cuestionario por área (8 preguntas).
 2. Navegar hasta la última pregunta sin responder ninguna. Tocar "Finalizar".
-3. Repetir con otro cuestionario respondiendo solo 1 pregunta, correctamente, y dejando las otras 3 sin responder.
+3. Repetir con otro cuestionario respondiendo solo 2 preguntas, correctamente, y dejando las otras 6 sin responder.
 
 **Resultado esperado:**
 
-- Paso 2: puntaje `0%`, "Correctas: 0", "Incorrectas: 4", estado "No aprobado". La prueba se guarda igual.
-- Paso 3: puntaje `25%`, "Correctas: 1", "Incorrectas: 3", estado "No aprobado". Las preguntas sin responder cuentan como incorrectas y el porcentaje se calcula sobre todas las preguntas de la prueba.
+- Paso 2: puntaje `0%`, "Correctas: 0", "Incorrectas: 8", estado "No aprobado". La prueba se guarda igual.
+- Paso 3: puntaje `25%`, "Correctas: 2", "Incorrectas: 6", estado "No aprobado". Las preguntas sin responder cuentan como incorrectas y el porcentaje se calcula sobre todas las preguntas de la prueba.
 - No hay ninguna confirmación al finalizar con preguntas sin responder (comportamiento actual, no es defecto).
 
 **Resultado:**
@@ -117,8 +118,8 @@ Hoy `firestore.rules` todavía permite que un estudiante suba su propio XP (hast
 
 **Pasos:**
 
-1. Iniciar un cuestionario por área y responder las 4 preguntas correctamente. Finalizar.
-2. Iniciar otro y responder 2 correctamente y 2 incorrectamente. Finalizar.
+1. Iniciar un cuestionario por área y responder las 8 preguntas correctamente. Finalizar.
+2. Iniciar otro y responder 4 correctamente y 4 incorrectamente. Finalizar.
 
 **Resultado esperado:**
 
@@ -136,18 +137,18 @@ Hoy `firestore.rules` todavía permite que un estudiante suba su propio XP (hast
 
 ## Caso 4: Redondeo del puntaje (opcional)
 
-El redondeo ya está cubierto por la prueba automática `functions/test/calificacion.test.js` ("mezcla de aciertos redondea el puntaje"). Este caso manual solo se ejecuta si se dispone de una prueba cuyo total no divide a 100.
+El redondeo ya está cubierto por la prueba automática `functions/test/calificacion.test.js` ("mezcla de aciertos redondea el puntaje"). Este caso manual es opcional: con el seed actual cada cuestionario por área tiene 8 preguntas, un total que no divide a 100, así que se puede ejecutar sin crear datos extra.
 
-**Precondiciones:** un área de pruebas con un número de preguntas que no divida a 100 (por ejemplo 3 o 6), creada solo en el proyecto de pruebas.
+**Precondiciones:** cuenta de prueba y el seed cargado (8 preguntas por cuestionario de área).
 
 **Pasos:**
 
-1. Iniciar un cuestionario de esa área con 3 preguntas y responder 1 correctamente.
-2. Repetir respondiendo 2 correctamente.
+1. Iniciar un cuestionario por área y responder 1 pregunta correctamente (las otras 7 incorrectas o sin responder).
+2. Repetir respondiendo 3 correctamente.
 
 **Resultado esperado:**
 
-- 1 de 3: `33%`. 2 de 3: `67%`. El puntaje siempre es un entero.
+- 1 de 8: `13%` (12,5 redondea hacia arriba). 3 de 8: `38%` (37,5 redondea hacia arriba). El puntaje siempre es un entero.
 
 **Resultado:**
 
@@ -165,7 +166,7 @@ El redondeo ya está cubierto por la prueba automática `functions/test/califica
 **Pasos:**
 
 1. Abrir `/perfil` y anotar XP y nivel.
-2. Completar un cuestionario por área con 3 respuestas correctas y 1 incorrecta.
+2. Completar un cuestionario por área con exactamente 3 respuestas correctas (las otras 5, incorrectas o sin responder).
 3. En Firestore, abrir `usuarios/{uid}` y `ranking/{uid}`.
 4. Volver a `/perfil` sin recargar y anotar el XP mostrado.
 5. Recargar la página (F5) en `/perfil` y anotar el XP.
@@ -215,7 +216,7 @@ El redondeo ya está cubierto por la prueba automática `functions/test/califica
 
 ## Caso 7: Tope de 100 XP por prueba
 
-**Precondiciones:** cuenta de prueba con XP conocido. Hace falta un simulacro (20 preguntas): con el banco del seed ningún cuestionario por área alcanza 10 correctas.
+**Precondiciones:** cuenta de prueba con XP conocido. Hace falta un simulacro (30 preguntas): con el banco del seed ningún cuestionario por área (8 preguntas) alcanza 10 correctas.
 
 **Pasos:**
 
@@ -246,14 +247,14 @@ El redondeo ya está cubierto por la prueba automática `functions/test/califica
 
 **Pasos:**
 
-1. Completar 3 cuestionarios por área seguidos, con 4, 2 y 3 respuestas correctas respectivamente.
+1. Completar 3 cuestionarios por área seguidos (8 preguntas cada uno), con 4, 2 y 3 respuestas correctas respectivamente.
 2. Revisar `usuarios/{uid}.xp` y `ranking/{uid}.puntajeAcumulado` después de cada prueba.
 3. Abrir `/resultados/{id}` de cada una (o revisar la colección `resultados`).
 
 **Resultado esperado:**
 
 - XP acumulado: 40, luego 60, luego 90. `ranking/{uid}.puntajeAcumulado` coincide con el XP en cada paso.
-- Existen 3 documentos en `resultados`, uno por prueba, con su propio puntaje (100%, 50%, 75%). Ningún resultado se sobrescribe ni se pierde.
+- Existen 3 documentos en `resultados`, uno por prueba, con su propio puntaje (50%, 25% y 38%, calculados sobre 8 preguntas). Ningún resultado se sobrescribe ni se pierde.
 
 **Resultado:**
 
@@ -318,7 +319,7 @@ El redondeo ya está cubierto por la prueba automática `functions/test/califica
 
 **Pasos:**
 
-1. Completar un cuestionario por área con 4 respuestas correctas.
+1. Completar un cuestionario por área con exactamente 4 respuestas correctas (las otras 4, incorrectas o sin responder).
 2. Revisar `usuarios/{uid}`.
 
 **Resultado esperado:**
