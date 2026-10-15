@@ -10,6 +10,7 @@ import Quiz from "../pages/student/Quiz/Quiz";
 import Results from "../pages/student/Results/Results";
 import Feedback from "../pages/student/Feedback/Feedback";
 import Statistics from "../pages/student/Statistics/Statistics";
+import History from "../pages/student/History/History";
 import Ranking from "../pages/student/Ranking/Ranking";
 import Achievements from "../pages/student/Achievements/Achievements";
 import Profile from "../pages/student/Profile/Profile";
@@ -44,6 +45,8 @@ function AppRoutes() {
 					<Route path="/practica" element={<Practice />} />
 
 					<Route path="/estadisticas" element={<Statistics />} />
+
+					<Route path="/historial" element={<History />} />
 
 					<Route path="/ranking" element={<Ranking />} />
 

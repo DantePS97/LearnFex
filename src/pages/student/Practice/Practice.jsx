@@ -67,7 +67,7 @@ function Practice() {
             <button
               type="button"
               className="practice-button practice-button-secondary"
-              onClick={() => navigate("/estadisticas")}
+              onClick={() => navigate("/historial")}
             >
               Historial
             </button>
