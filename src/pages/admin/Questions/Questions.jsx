@@ -21,9 +21,9 @@ const initialForm = {
 
 const dificultades = [
 	{ value: "", label: "Todas" },
-	{ value: "facil", label: "Fácil" },
+	{ value: "baja", label: "Baja" },
 	{ value: "media", label: "Media" },
-	{ value: "dificil", label: "Difícil" },
+	{ value: "alta", label: "Alta" },
 ];
 
 function Questions() {

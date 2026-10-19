@@ -183,7 +183,7 @@
 	color: var(--color-text);
 }
 
-.difficulty-facil {
+.difficulty-baja {
 	background: var(--color-success-bg);
 	color: var(--color-success);
 }
@@ -193,7 +193,7 @@
 	color: #eab308;
 }
 
-.difficulty-dificil {
+.difficulty-alta {
 	background: var(--color-error-bg);
 	color: var(--color-error);
 }
