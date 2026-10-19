@@ -52,8 +52,8 @@ src/
   config/firebase.js      Inicializa la app, auth, db, storage y functions (región us-central1);
                           conecta a emuladores si VITE_USE_EMULATORS === "true"
   context/AuthContext.jsx Sesión y perfil: carga usuarios/{uid} en onAuthStateChanged y lo vuelve a leer
-                          con refreshProfile (lo llama Resultados); si estado === "inactivo" cierra la
-                          sesión y activa el indicador cuentaInactiva
+                          con refreshProfile (lo llama Resultados); si la cuenta es inactiva
+                          (esCuentaInactiva) cierra la sesión y activa el indicador cuentaInactiva
   hooks/                  useAuth (lee el contexto), useTimer (temporizador de la prueba)
   routes/                 AppRoutes (mapa de rutas), PrivateRoutes (exige sesión), AdminRoute (exige rol)
   layouts/                StudentLayout (Navbar + BottomNavigation), AdminLayout
@@ -99,7 +99,7 @@ El ID es el UID de Firebase Authentication. Lo crea el cliente al registrarse (`
 | ----- | ---- | ----------- |
 | `nombre`, `apellido`, `correo` | string | Datos personales |
 | `rol` | string | `estudiante` o `administrador` |
-| `estado` | string | `activo` o `inactivo`. Un administrador lo cambia desde el panel (`setUserEstado`). Las reglas bloquean el acceso a los datos si vale algo distinto de `activo` (o si falta el campo, se trata como activo) y el cliente cierra la sesión si vale `inactivo`; ver sección 4 |
+| `estado` | string | `activo` o `inactivo`. Un administrador lo cambia desde el panel (`setUserEstado`). Las reglas bloquean el acceso a los datos si vale algo distinto de `activo` (o si falta el campo, se trata como activo) y el cliente cierra la sesión con la misma regla (`esCuentaInactiva`); ver sección 4 |
 | `xp` | number | Experiencia acumulada. La modifica la función |
 | `nivel` | number | `max(floor(xp / 1000) + 1, nivel actual)`. La modifica la función |
 | `colegio` | string | Editable por el propio usuario |
@@ -242,7 +242,7 @@ Las reglas, resumidas para un usuario con cuenta activa:
 
 Hay dos casos en que un usuario con sesión cuenta como activo sin serlo de verdad: que todavía no tenga documento en `usuarios` (es necesario en el registro, porque Authentication crea la cuenta antes que `createUserProfile` cree el documento) y que su documento no tenga el campo `estado`.
 
-El cliente es menos estricto que las reglas: `AuthContext.jsx:22` y `Login.jsx:53` cierran la sesión solo si `estado === "inactivo"`. Con cualquier otro valor distinto de `activo`, la sesión queda abierta pero las reglas niegan todas las consultas.
+El cliente aplica la misma regla: `userService.esCuentaInactiva(perfil)` devuelve verdadero si el perfil existe, tiene la clave `estado` y su valor no es `activo` (un `estado: null` cuenta como inactivo). La usan `AuthContext` (al iniciar sesión y en `refreshProfile`) y `Login`, y cierran la sesión con el aviso "Tu cuenta está desactivada. Contactá a un administrador." Si se cambia `estaActivo()`, hay que cambiar también esa función.
 
 #### Costo de las llamadas `get()` y `exists()`
 
@@ -483,8 +483,7 @@ El repositorio no tiene pipelines de integración continua (no hay `.github/work
 | "No se pudo cargar el historial" o error en Estadísticas | Falta el índice compuesto de `resultados` | Consola de Firebase > Firestore > Índices; desplegar `firestore:indexes` |
 | `permission-denied` en consola del navegador | Reglas desplegadas distintas del código, usuario sin rol suficiente o cuenta con `estado` distinto de `activo` | Comparar el ruleset publicado con `firestore.rules`; revisar `usuarios/{uid}.rol` y `.estado` |
 | `permission-denied` al registrarse | Reglas nuevas desplegadas con un cliente anterior al consentimiento, que no escribe `consentimientoDatos` ni `fechaConsentimiento` | Publicar el cliente nuevo; respetar el orden de la sección 9.2 |
-| Un usuario ve "Tu cuenta está desactivada. Contactá a un administrador." | `usuarios/{uid}.estado == "inactivo"` | Reactivarlo desde Usuarios, o editar el campo en la consola |
-| Un usuario conserva la sesión pero todas las pantallas fallan al cargar | `estado` con un valor que no es `inactivo` ni `activo` (el cliente no lo reconoce, pero las reglas lo bloquean) | Corregir el valor a `activo` o `inactivo` |
+| Un usuario ve "Tu cuenta está desactivada. Contactá a un administrador." | `usuarios/{uid}.estado` tiene cualquier valor distinto de `activo` (`inactivo`, `Inactivo`, `suspendido`, `null`...) | Reactivarlo desde Usuarios, o corregir el campo en la consola |
 | Error del servidor (404 del hosting) o pantalla en blanco al recargar una ruta en producción | Falta la reescritura a `index.html` en el hosting. No confundir con la página "Página no encontrada" de la aplicación, que solo se ve cuando la reescritura funciona y la ruta no existe | `vercel.json` presente y desplegado |
 | La aplicación en producción intenta conectarse a `127.0.0.1` | `VITE_USE_EMULATORS=true` en el build de producción | Variables del hosting y volver a construir |
 | Errores de Firebase por configuración (`auth/invalid-api-key` y similares) | Variables `VITE_FIREBASE_*` ausentes en el build | Definirlas antes de construir; recordar que se inyectan en build |
@@ -498,9 +497,9 @@ Verificados contra `firestore.rules` y el código de `main` (commit `99a359d`). 
 
 ### Seguridad y reglas de Firestore
 
-1. `preguntas` expone la respuesta correcta. Cualquier usuario con sesión activa puede leer `respuestaCorrecta` y `explicacion` de todas las preguntas antes de hacer una prueba (`allow read: if estaAutenticado()`, `firestore.rules:101-104`). `questionService.obtenerPreguntas` los quita solo en el cliente. La pantalla de retroalimentación depende de leer esos campos directamente (`Feedback.jsx:36-42`), así que cerrarlo exige rediseñar ese flujo (por ejemplo, guardar la respuesta correcta y la explicación en la subcolección `respuestas` al calificar, o devolverlas desde la función). Está en la tarjeta Sprint 7 - 04, pendiente de decisión.
+1. `preguntas` expone la respuesta correcta (riesgo aceptado temporalmente, ver más abajo). Cualquier usuario con sesión activa puede leer `respuestaCorrecta` y `explicacion` de todas las preguntas antes de hacer una prueba (`allow read: if estaAutenticado()`, `firestore.rules:101-104`). `questionService.obtenerPreguntas` los quita solo en el cliente. La pantalla de retroalimentación depende de leer esos campos directamente (`Feedback.jsx:36-42`), así que cerrarlo exige rediseñar ese flujo (por ejemplo, guardar la respuesta correcta y la explicación en la subcolección `respuestas` al calificar, o devolverlas desde la función). Está en la tarjeta Sprint 7 - 04. Riesgo aceptado temporalmente por decisión del dueño del proyecto del 2026-10-19 (Opción C de esa tarjeta); ver tarjeta Sprint 7 - 04 en el tablero. Consecuencia aceptada: cualquier estudiante autenticado puede leer la respuesta correcta antes de rendir, sacar 100 %, ganar el XP máximo y escalar en el ranking; el ranking y el XP no son confiables frente a un estudiante que sepa usar las herramientas del navegador. Alcance: temporal; hay que revisarlo antes de usar la plataforma con estudiantes reales o de publicar un ranking con consecuencias. La Opción A (subcolección de soluciones servida por una Cloud Function) queda en el backlog, en la tarjeta "[Backlog] [01] Backend: proteger las respuestas correctas".
 2. La desactivación de una cuenta no alcanza a la función ni a Authentication. `calificarPrueba` solo mira `request.auth` (`functions/src/calificarPrueba.js:14-20`) y usa el Admin SDK, que no pasa por las reglas: una cuenta desactivada con un token vigente puede seguir enviando pruebas y sumando XP y ranking. Además, `setUserEstado` solo actualiza el documento de Firestore (`userRepository.js:105-113`): la cuenta de Authentication sigue habilitada, puede iniciar sesión en Firebase y obtener tokens. Lo que sí bloquea el acceso son las reglas y el cierre de sesión del cliente (sección 4).
-3. Un perfil inexistente cuenta como activo. `estaActivo()` devuelve verdadero si no existe `usuarios/{uid}` (`firestore.rules:17`), porque el registro lo necesita. Una cuenta de Authentication sin documento (por ejemplo, si falló `createUserProfile` tras crear la cuenta) puede leer y escribir lo que las reglas permiten a "autenticado". Tampoco hay un barrido que detecte esas cuentas. Relacionado: el cliente solo cierra la sesión con el valor exacto `estado === "inactivo"`; con cualquier otro valor distinto de `activo` la sesión queda abierta y todas las consultas fallan por `permission-denied` (sección 4).
+3. Un perfil inexistente cuenta como activo. `estaActivo()` devuelve verdadero si no existe `usuarios/{uid}` (`firestore.rules:17`), porque el registro lo necesita. Una cuenta de Authentication sin documento (por ejemplo, si falló `createUserProfile` tras crear la cuenta) puede leer y escribir lo que las reglas permiten a "autenticado". Tampoco hay un barrido que detecte esas cuentas.
 4. No hay protección del último administrador. Ninguna regla comprueba cuántos administradores activos quedan, y la rama de administrador de `usuarios` no valida los valores que escribe en `rol` y `estado` (`firestore.rules:84`). El autobloqueo ya está cerrado (un administrador no puede cambiar su propio rol ni estado), pero un administrador puede degradar o desactivar a cualquier otro. El cambio de rol tampoco pide confirmación en la pantalla.
 5. Creación ilimitada de cuestionarios válidos. Cualquier usuario con sesión activa puede crear cuantos cuestionarios con la forma correcta quiera (`firestore.rules:108`); se valida la forma y el tamaño, no la cantidad ni que los `preguntaId` existan, y de la lista `preguntas` solo se revisan el primer y el último elemento. Es una consecuencia de que el cliente cree los cuestionarios (ver el punto 10).
 6. `estadisticas_progreso` acepta valores arbitrarios en el propio documento: la regla solo comprueba el prefijo del ID y el `usuarioId` (`firestore.rules:142-144`). Impacto bajo: el cliente actual no lee esos documentos para mostrar datos.
@@ -542,7 +541,6 @@ Verificados contra `firestore.rules` y el código de `main` (commit `99a359d`). 
 30. No hay integración continua ni despliegue automatizado (sección 9.4).
 31. `.firebaserc` apunta por defecto a `learnfex-dev-oscar`, un proyecto de desarrollo del equipo, y no define staging ni producción: por eso los despliegues siguen llevando `--project` (sección 9.1).
 32. `.gitignore` ignora `.env`, `.env.production`, `.env.development`, `.env.test` y `*.local`, pero Vite carga `.env.<modo>` para cualquier modo (por ejemplo `.env.staging`), que no está cubierto.
-33. El mensaje de error de `scripts/seed-preguntas.js` aún dice que el panel de administración "todavía no existe" (`scripts/seed-preguntas.js:561`); ya existe.
 
 ### Corregido desde la versión anterior de este manual
 
@@ -561,6 +559,8 @@ Estos puntos figuraban como abiertos y el código actual los resuelve. Se dejan 
 | Perfil desactualizado tras una prueba | `refreshProfile` al abrir Resultados | #97 |
 | Borrar una pregunta sin advertir | Advertencia al eliminar y aviso en la retroalimentación | #104 |
 | Sin página 404 | `NotFound` en la ruta `*` | #105 |
+| El cliente solo cerraba la sesión con `estado === "inactivo"`; con otro valor distinto de `activo` la sesión quedaba abierta y todo fallaba con `permission-denied` | `esCuentaInactiva` aplica en el cliente la misma regla que `estaActivo()` | #110 |
+| El comentario de `scripts/seed-preguntas.js` decía que el panel de administración "todavía no existe" | Reescrito: el primer administrador se crea a mano y después los roles se gestionan desde el panel | #110 |
 | Sin `.env.example`; `.firebaserc` vacío; `.gitignore` incompleto | Los tres versionados/ampliados | #91 |
 | Historial sin título ni tiempo, inaccesible en móvil | Título, tiempo y acceso desde Perfil | #98 |
 | "Promedio general" sin `%` en Reportes | Con `%` | #107 |
