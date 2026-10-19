@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import "./Results.css";
 
+import { getCatalogoLogros } from "../../../repositories/logroRepository";
 import { getResultadoConRespuestas } from "../../../repositories/resultRepository";
 import { useAuth } from "../../../hooks/useAuth";
 
@@ -13,6 +14,21 @@ const Results = () => {
   const [resultado, setResultado] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const location = useLocation();
+  const nuevosLogrosIds = location.state?.nuevosLogros ?? [];
+  const [logrosNuevos, setLogrosNuevos] = useState([]);
+
+  useEffect(() => {
+    if (nuevosLogrosIds.length === 0) return;
+
+    getCatalogoLogros()
+      .then((catalogo) =>
+        setLogrosNuevos(catalogo.filter((logro) => nuevosLogrosIds.includes(logro.id)))
+      )
+      .catch((err) => console.error("No se pudo cargar el catálogo de logros:", err));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resultadoId]);
 
   useEffect(() => {
     const loadResultado = async () => {
@@ -232,6 +248,22 @@ const Results = () => {
           </div>
 
         </div>
+
+        {/* Logros nuevos */}
+        {logrosNuevos.length > 0 && (
+          <div className="results-stats">
+            {logrosNuevos.map((logro) => (
+              <div key={logro.id} className="results-stat-card results-stat-card--correct">
+                <span className="results-stat-icon">🏅</span>
+
+                <div>
+                  <strong>¡Logro desbloqueado!</strong>
+                  <span>{logro.nombre}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Botones */}
         <div className="results-actions">

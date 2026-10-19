@@ -54,7 +54,9 @@ export default function Quiz() {
         tiempoEmpleado
       );
 
-      navigate(`/resultados/${resultado.resultadoId}`);
+      navigate(`/resultados/${resultado.resultadoId}`, {
+        state: { nuevosLogros: resultado.nuevosLogros ?? [] },
+      });
     } catch (err) {
       if (err.code === "functions/already-exists") {
         // La prueba ya se guardo (por ejemplo, un reintento tras un timeout):
