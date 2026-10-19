@@ -3,8 +3,8 @@
 Este documento valida el comportamiento responsive de las pantallas de Práctica (`Practice.jsx`) y del cuestionario o simulacro en curso (`Quiz.jsx`) de LearnFex.
 
 - Estado del documento: plantilla de ejecución. Ningún caso fue ejecutado todavía; todas las casillas de resultado están vacías a propósito.
-- Verificado contra el código de `main` en el commit `c3d71aa`. Si `main` cambió desde entonces, revisar los casos antes de ejecutarlos.
-- Autoría original del borrador: Juliana Martínez (PR #63). Corregido contra el código real y actualizado tras el seed de 40 preguntas (PR #65), el botón "Historial" hacia `/historial` (PR #67) y la migración de colores de `Practice.css` y `Quiz.css` a tokens (PRs de CSS #50 a #52 y #73 a #75: cambios de color, sin cambios de layout ni de cortes).
+- Verificado contra el código de `main` en el commit `99a359d` (2026-10-19). Si `main` cambió desde entonces, revisar los casos antes de ejecutarlos.
+- Autoría original del borrador: Juliana Martínez (PR #63). Corregido contra el código real y actualizado tras el seed de 40 preguntas (PR #65), el botón "Historial" hacia `/historial` (PR #67), la migración de colores de `Practice.css` y `Quiz.css` a tokens (PRs de CSS #50 a #52 y #73 a #75: cambios de color, sin cambios de layout ni de cortes) y el Sprint 7: Historial desde Perfil (PR #98), bloque "Simulacro completo" en Práctica (PR #96), temporizador fijo en móvil (PR #102) y confirmar/reintentar al finalizar (PR #94).
 - Requisito que cubre (ERS): diseño adaptable a distintos tamaños de pantalla (RNF-010) y temporizador visible durante la prueba (RF-009).
 
 ---
@@ -18,8 +18,8 @@ Este es el punto que más se prestaba a error, así que conviene tenerlo claro a
   - 768 px o más: la barra superior muestra además los 5 enlaces y la barra inferior se oculta. El corte es `min-width: 768px` en `Navbar.css`, `BottomNavigation.css` y `StudentLayout.css`: a 768 px exactos ya se ve la versión de escritorio y a 767 px la móvil.
 - **El cuestionario o simulacro en curso (`/practica/cuestionario`, `Quiz.jsx`) está FUERA de `StudentLayout`** (`src/routes/AppRoutes.jsx`, rutas del flujo de resolución de pruebas, SDD 5.1). No tiene barra superior ni barra inferior en ningún ancho. Tiene su propio encabezado con la marca ("LearnFex" y el nombre del área o "Simulacro general").
 - Cortes de CSS propios de cada pantalla:
-  - Práctica: 900 px (la grilla de áreas pasa de 2 columnas a 1), 600 px (se ocultan los botones "Historial" y "+ Nueva práctica" del encabezado) y 400 px (menos relleno lateral).
-  - Cuestionario: 700 px (el contador y el temporizador salen del encabezado y el temporizador pasa a mostrarse como un bloque al final de la pantalla) y 430 px (marca y botones más compactos; los botones Anterior y Siguiente ocupan todo el ancho).
+  - Práctica: 900 px (la grilla de áreas pasa de 2 columnas a 1), 600 px (se ocultan los botones "Historial" y "+ Nueva práctica" del encabezado; el bloque "Simulacro completo" pasa a columna y su botón ocupa todo el ancho) y 400 px (menos relleno lateral). El historial sigue accesible en cualquier ancho desde Perfil.
+  - Cuestionario: 700 px (el contador y el temporizador salen del encabezado y el temporizador pasa a mostrarse como un bloque fijo, `position: fixed`, centrado en la parte inferior de la pantalla) y 430 px (marca y botones más compactos; los botones Anterior y Siguiente ocupan todo el ancho).
 
 ## Anchos a probar
 
@@ -36,7 +36,7 @@ Este es el punto que más se prestaba a error, así que conviene tenerlo claro a
 - Aplicación corriendo con `npm run dev`, con datos del seed cargados (5 áreas, 40 preguntas; si el proyecto tenía el seed anterior, volver a ejecutar `scripts/seed-preguntas.js`) y la función `calificarPrueba` desplegada.
 - Sesión iniciada como estudiante.
 - Navegador con DevTools: modo "Toggle Device Toolbar" en "Responsive", escribiendo el ancho exacto; repetir con el redimensionado manual de la ventana. Anotar siempre el ancho exacto donde algo falla.
-- Cuestionario por área (8 preguntas con el seed): se inicia tocando un área en `/practica`. Simulacro (30 preguntas con el seed): no tiene botón; se inicia escribiendo `/practica/cuestionario` en la barra de direcciones.
+- Cuestionario por área (8 preguntas con el seed): se inicia tocando un área en `/practica`. Simulacro (30 preguntas con el seed): se inicia con el botón "Iniciar simulacro" del bloque "Simulacro completo" de `/practica`.
 - Al probar los casos del cuestionario, no finalizar si no hace falta (salir con la navegación del navegador).
 
 ## Datos de la ejecución
@@ -94,12 +94,14 @@ Este es el punto que más se prestaba a error, así que conviene tenerlo claro a
 
 1. Observar el encabezado ("Práctica", "Banco de preguntas ICFES") y los botones "Historial" y "+ Nueva práctica" en 1280, 768, 601, 600 y 375 px.
 2. En un ancho donde se vean, tocar "Historial" y luego "+ Nueva práctica".
+3. En 375 px, abrir `/perfil` con la barra inferior y tocar "Historial" en el menú.
 
 **Resultado esperado:**
 
 - Desde 601 px los dos botones se ven alineados a la derecha del título, sin cortarse ni solaparse con él.
-- Hasta 600 px los dos botones se ocultan (comportamiento actual por CSS); el título sigue completo y legible. Consecuencia: en 600 px o menos no hay ningún acceso desde la interfaz a `/historial` (este botón es el único enlace a esa pantalla).
-- "Historial" navega a `/historial` (la pantalla de resultados anteriores, no `/estadisticas`). "+ Nueva práctica" abre el cuestionario del primer área de la lista filtrada (no un simulacro).
+- Hasta 600 px los dos botones se ocultan (comportamiento por CSS); el título sigue completo y legible. El historial no queda sin acceso en el celular: el menú de Perfil tiene el elemento "Historial" en cualquier ancho.
+- "Historial" (de Práctica) navega a `/historial` (la pantalla de resultados anteriores, no `/estadisticas`). "+ Nueva práctica" abre el cuestionario del primer área de la lista filtrada (no un simulacro).
+- Paso 3: "Historial" en Perfil también navega a `/historial`.
 
 **Resultado:**
 
@@ -151,7 +153,7 @@ Este es el punto que más se prestaba a error, así que conviene tenerlo claro a
 **Pasos:**
 
 1. Desde Práctica, tocar un área y observar la pantalla del cuestionario en cada ancho.
-2. Repetir con el simulacro escribiendo `/practica/cuestionario` en la barra de direcciones.
+2. Repetir con el simulacro, usando "Iniciar simulacro" en `/practica`.
 3. Buscar en la pantalla la barra superior con enlaces y la barra inferior de navegación.
 
 **Resultado esperado:**
@@ -184,11 +186,11 @@ Este es el punto que más se prestaba a error, así que conviene tenerlo claro a
 **Resultado esperado:**
 
 - 701 px o más: el contador y el temporizador (formato mm:ss, cuenta regresiva) están a la derecha del encabezado, sin cortarse ni salirse del contenedor.
-- 700 px o menos: el encabezado solo muestra la marca; el contador y el temporizador del encabezado se ocultan. El contador sigue visible dentro de la tarjeta de la pregunta ("Pregunta N de M") y el temporizador aparece como un bloque centrado al final de la pantalla, debajo de la navegación de preguntas.
-- En todos los anchos el temporizador se actualiza cada segundo y no se superpone con otros elementos.
+- 700 px o menos: el encabezado solo muestra la marca; el contador y el temporizador del encabezado se ocultan. El contador sigue visible dentro de la tarjeta de la pregunta ("Pregunta N de M") y el temporizador aparece como un bloque centrado y **fijo** en la parte inferior de la pantalla (`.mobile-timer`, `position: fixed`), con borde y texto en color de error, siempre visible aunque se desplace la página; la página deja un relleno inferior de 80 px para que no tape el último contenido.
+- En todos los anchos el temporizador se actualiza cada segundo y no se superpone con otros elementos importantes (botones Anterior/Siguiente/Finalizar y la navegación de preguntas siguen alcanzables al desplazarse hasta el final).
 - La ERS (RF-009) pide un temporizador visible durante toda la prueba.
 
-**Comportamiento actual conocido (posible brecha, por lectura del CSS):** en 700 px o menos el bloque del temporizador no es fijo (`.mobile-timer` está al final de la página), por lo que puede quedar fuera de la vista mientras se responde. Si al ejecutar el paso 3 hay que desplazarse hasta el final para ver el tiempo, anotarlo como hallazgo de usabilidad.
+**Nota:** hasta el PR #102 el bloque del temporizador no era fijo y podía quedar fuera de la vista. Si en 700 px o menos hay que desplazarse para ver el tiempo, es una regresión: anotar el ancho exacto.
 
 **Resultado:**
 
@@ -270,12 +272,41 @@ Este es el punto que más se prestaba a error, así que conviene tenerlo claro a
 **Resultado esperado:**
 
 - El cambio de ancho no reinicia la prueba: se conservan la pregunta actual, las respuestas marcadas y el avance del temporizador (el cambio es solo de CSS).
-- Al cruzar 700 px el temporizador pasa del encabezado al bloque inferior y viceversa, sin duplicarse ni desaparecer.
+- Al cruzar 700 px el temporizador pasa del encabezado al bloque fijo inferior y viceversa, sin duplicarse ni desaparecer.
 
 **Resultado:**
 
 - Cambio 1280 a 375 px: [ ] Pasa  [ ] Falla
 - Cambio 375 a 1280 px: [ ] Pasa  [ ] Falla
+- Fecha / Tester / Entorno:
+- Evidencia (captura, log o enlace):
+- Observaciones:
+
+---
+
+## Caso 9: Práctica - bloque "Simulacro completo"
+
+**Pantalla:** `/practica`.
+
+**Pasos:**
+
+1. Observar el bloque "Simulacro completo" (etiqueta "SIMULACRO", texto "Preguntas de las cinco áreas con tiempo controlado, como en el Saber 11." y botón "Iniciar simulacro") en 1280, 768, 601, 600 y 375 px.
+2. Tocar "Iniciar simulacro" en 375 px.
+3. En 375 px, comprobar que el bloque queda por encima de la barra inferior al desplazarse al final de la página.
+
+**Resultado esperado:**
+
+- En 601 px o más, el texto va a la izquierda y el botón a la derecha, en la misma fila, sin cortarse ni solaparse.
+- En 600 px o menos, el bloque pasa a columna (texto arriba, botón abajo) y el botón ocupa todo el ancho del bloque; el bloque se sigue viendo aunque los botones del encabezado estén ocultos.
+- Paso 2: se abre `/practica/cuestionario` con el encabezado "Simulacro general" y el contador "Pregunta 1 de 30" (con el seed).
+- El bloque no tapa ni queda tapado por la barra inferior, y no hay desplazamiento horizontal de la página.
+
+**Resultado:**
+
+- 375 px: [ ] Pasa  [ ] Falla
+- 600 / 601 px: [ ] Pasa  [ ] Falla
+- 768 px: [ ] Pasa  [ ] Falla
+- 1280 px: [ ] Pasa  [ ] Falla
 - Fecha / Tester / Entorno:
 - Evidencia (captura, log o enlace):
 - Observaciones:
