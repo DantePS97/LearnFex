@@ -4,8 +4,6 @@ import "./Quiz.css";
 
 import { useAuth } from "../../../hooks/useAuth";
 import { useTimer } from "../../../hooks/useTimer";
-import { getAllAreas, getAreaById } from "../../../repositories/areaRepository";
-import { obtenerPreguntas } from "../../../services/questionService";
 import { armarCuestionario, armarSimulacro } from "../../../services/quizService";
 import { calificarPrueba } from "../../../services/resultService";
 import QuestionCard from "../../../components/QuestionCard/QuestionCard";
@@ -87,25 +85,22 @@ export default function Quiz() {
         setError("");
 
         if (areaId) {
-          const [idCuestionario, preguntasArea, area] = await Promise.all([
-            armarCuestionario(areaId, cantidad),
-            obtenerPreguntas(areaId, null, cantidad),
-            getAreaById(areaId),
-          ]);
+          const {
+            cuestionarioId: idCuestionario,
+            preguntas: preguntasCuestionario,
+            area,
+          } = await armarCuestionario(areaId, cantidad);
 
           setCuestionarioId(idCuestionario);
-          setPreguntas(preguntasArea);
+          setPreguntas(preguntasCuestionario);
           setAreaNombre(area?.nombre ?? "");
           setDuracion((area?.tiempoLimite || DURACION_POR_DEFECTO_MINUTOS) * 60);
         } else {
-          const idCuestionario = await armarSimulacro();
-          const areas = await getAllAreas();
-
-          const preguntasSimulacro = (
-            await Promise.all(
-              areas.map((area) => obtenerPreguntas(area.id, null, area.numPreguntas))
-            )
-          ).flat();
+          const {
+            cuestionarioId: idCuestionario,
+            preguntas: preguntasSimulacro,
+            areas,
+          } = await armarSimulacro();
 
           const duracionTotal = areas.reduce(
             (total, area) => total + (area.tiempoLimite || 0),
@@ -119,7 +114,11 @@ export default function Quiz() {
         }
       } catch (err) {
         console.error("Error al preparar el cuestionario:", err);
-        setError("No se pudo preparar el cuestionario.");
+        setError(
+          err.code === "quiz/sin-preguntas"
+            ? err.message
+            : "No se pudo preparar el cuestionario."
+        );
       } finally {
         setLoading(false);
       }
@@ -177,6 +176,14 @@ export default function Quiz() {
     return (
       <div className="quiz-screen quiz-screen--centrado">
         <p>{error || "No hay preguntas disponibles."}</p>
+
+        <button
+          type="button"
+          className="next-button"
+          onClick={() => navigate("/practica")}
+        >
+          Volver a práctica
+        </button>
       </div>
     );
   }
