@@ -4,6 +4,8 @@ import Login from "../pages/auth/Login/Login";
 import Register from "../pages/auth/Register/Register";
 import ForgotPassword from "../pages/auth/ForgotPassword/Forgotpassword";
 
+import Privacy from "../pages/legal/Privacy/Privacy";
+
 import Home from "../pages/student/Home/Home";
 import Practice from "../pages/student/Practice/Practice";
 import Quiz from "../pages/student/Quiz/Quiz";
@@ -37,6 +39,9 @@ function AppRoutes() {
 			<Route path="/registro" element={<Register />} />
 
 			<Route path="/recuperar-contrasena" element={<ForgotPassword />} />
+
+				{/* Pública: debe poder leerse antes de registrarse, sin sesión. */}
+				<Route path="/privacidad" element={<Privacy />} />
 
 			<Route element={<PrivateRoutes />}>
 				<Route element={<StudentLayout />}>

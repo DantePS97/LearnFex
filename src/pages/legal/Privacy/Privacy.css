@@ -1,0 +1,123 @@
+.privacy-page {
+	display: flex;
+	justify-content: center;
+
+	min-height: 100vh;
+	padding: var(--space-xl);
+
+	background-color: var(--color-bg);
+	box-sizing: border-box;
+}
+
+.privacy-card {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-xl);
+
+	width: 100%;
+	max-width: 760px;
+	height: fit-content;
+
+	padding: var(--space-xl);
+
+	background-color: var(--color-surface-alt);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-lg);
+	box-sizing: border-box;
+
+	overflow-wrap: anywhere;
+}
+
+.privacy-header {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-xs);
+}
+
+.privacy-title {
+	margin: 0;
+
+	color: var(--color-text);
+	font-size: var(--font-size-xl);
+	font-weight: 700;
+	line-height: 1.3;
+}
+
+.privacy-version {
+	margin: 0;
+
+	color: var(--color-text-muted);
+	font-size: var(--font-size-sm);
+}
+
+.privacy-section {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-xs);
+}
+
+.privacy-section h2 {
+	margin: 0;
+
+	color: var(--color-text);
+	font-size: var(--font-size-lg);
+	font-weight: 600;
+}
+
+.privacy-text {
+	margin: 0;
+
+	color: var(--color-text-secondary);
+	font-size: var(--font-size-base);
+	line-height: 1.6;
+}
+
+.privacy-list {
+	margin: 0;
+	list-style: disc;
+	padding-left: var(--space-xl);
+
+	color: var(--color-text-secondary);
+	font-size: var(--font-size-base);
+	line-height: 1.6;
+}
+
+.privacy-list li + li {
+	margin-top: var(--space-xs);
+}
+
+.privacy-list strong {
+	color: var(--color-text);
+}
+
+.privacy-footer {
+	padding-top: var(--space-lg);
+
+	border-top: 1px solid var(--color-border-alt);
+}
+
+.privacy-footer a {
+	color: var(--color-primary);
+	font-size: var(--font-size-sm);
+	text-decoration: none;
+}
+
+.privacy-footer a:hover {
+	text-decoration: underline;
+}
+
+.privacy-footer a:focus-visible {
+	outline: 2px solid var(--color-primary);
+	outline-offset: 2px;
+	border-radius: var(--radius-sm);
+}
+
+@media (max-width: 480px) {
+	.privacy-page {
+		padding: var(--space-lg);
+	}
+
+	.privacy-card {
+		padding: var(--space-lg);
+	}
+}
