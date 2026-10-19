@@ -25,7 +25,9 @@ service cloud.firestore {
         request.resource.data.rol == 'estudiante' &&
         request.resource.data.estado == 'activo' &&
         request.resource.data.xp == 0 &&
-        request.resource.data.nivel == 1;
+        request.resource.data.nivel == 1 &&
+        request.resource.data.consentimientoDatos == true &&
+        request.resource.data.fechaConsentimiento == request.time;
 
       allow update: if esAdministrador() || (esPropioUsuario(usuarioId) && esActualizacionDePerfil());
 
