@@ -6,9 +6,15 @@ import {
 	setUserRol,
 } from "../../../repositories/userRepository";
 
+import { useAuth } from "../../../hooks/useAuth";
+
 import "./Users.css";
 
 function Users() {
+	const { user: usuarioActual } = useAuth();
+
+	const esUsuarioActual = (usuario) => usuario.id === usuarioActual?.uid;
+
 	const [users, setUsers] = useState([]);
 	const [cursor, setCursor] = useState(null);
 	const [search, setSearch] = useState("");
@@ -60,6 +66,11 @@ function Users() {
 	}, [users, search]);
 
 	const handleEstado = async (user) => {
+		if (esUsuarioActual(user)) {
+			setError("No podés desactivar tu propia cuenta. Pedile a otro administrador que lo haga.");
+			return;
+		}
+
 		const nuevoEstado =
 			user.estado === "activo" ? "inactivo" : "activo";
 
@@ -107,6 +118,11 @@ function Users() {
 	};
 
 	const handleRol = async (user, nuevoRol) => {
+		if (esUsuarioActual(user)) {
+			setError("No podés cambiar tu propio rol. Pedile a otro administrador que lo haga.");
+			return;
+		}
+
 		if (!nuevoRol || nuevoRol === user.rol) {
 			return;
 		}
@@ -218,7 +234,8 @@ function Users() {
 													)
 												}
 												disabled={
-													savingUserId === user.id
+													savingUserId === user.id ||
+													esUsuarioActual(user)
 												}
 											>
 												<option value="estudiante">
@@ -268,7 +285,8 @@ function Users() {
 													}
 													disabled={
 														savingUserId ===
-														user.id
+															user.id ||
+														esUsuarioActual(user)
 													}
 												>
 													{savingUserId === user.id
