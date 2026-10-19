@@ -18,6 +18,32 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre', 'apellido', 'colegio']);
     }
 
+    // Elemento del arreglo `preguntas` de un cuestionario: { preguntaId, orden } (quizService).
+    function esPreguntaDeCuestionarioValida(pregunta) {
+      return pregunta is map &&
+        pregunta.keys().hasOnly(['preguntaId', 'orden']) &&
+        pregunta.keys().hasAll(['preguntaId', 'orden']) &&
+        pregunta.preguntaId is string && pregunta.preguntaId.size() <= 100 &&
+        pregunta.orden is int;
+    }
+
+    // Forma exacta que escribe createQuiz (quizRepository). Las reglas no pueden recorrer
+    // listas, por eso del arreglo `preguntas` se revisan la cantidad, el primer y el ultimo elemento.
+    function esCuestionarioValido(datos) {
+      return datos.keys().hasOnly(['titulo', 'descripcion', 'tipo', 'areaId', 'duracion', 'estado', 'preguntas', 'fechaCreacion']) &&
+        datos.keys().hasAll(['titulo', 'tipo', 'estado', 'preguntas', 'fechaCreacion']) &&
+        datos.titulo is string && datos.titulo.size() <= 120 &&
+        datos.tipo in ['cuestionario', 'simulacro'] &&
+        datos.estado == 'activo' &&
+        datos.preguntas is list && datos.preguntas.size() >= 1 && datos.preguntas.size() <= 100 &&
+        esPreguntaDeCuestionarioValida(datos.preguntas[0]) &&
+        esPreguntaDeCuestionarioValida(datos.preguntas[datos.preguntas.size() - 1]) &&
+        (!('descripcion' in datos) || (datos.descripcion is string && datos.descripcion.size() <= 500)) &&
+        (!('duracion' in datos) || datos.duracion is number) &&
+        (!('areaId' in datos) || datos.areaId == null || (datos.areaId is string && datos.areaId.size() <= 100)) &&
+        datos.fechaCreacion == request.time;
+    }
+
     match /usuarios/{usuarioId} {
       allow read: if esPropioUsuario(usuarioId) || esAdministrador();
 
@@ -52,7 +78,7 @@ service cloud.firestore {
 
     match /cuestionarios/{cuestionarioId} {
       allow read: if estaAutenticado();
-      allow create: if estaAutenticado();
+      allow create: if estaAutenticado() && esCuestionarioValido(request.resource.data);
       allow update, delete: if esAdministrador();
     }
 
@@ -76,15 +102,21 @@ service cloud.firestore {
 
     match /ranking/{rankingId} {
       allow read: if estaAutenticado();
-      allow write: if esPropioUsuario(rankingId) || esAdministrador();
+      // Solo escribe la Cloud Function calificarPrueba con Admin SDK (no pasa por las reglas).
+      allow write: if false;
     }
 
     match /estadisticas_progreso/{statId} {
       allow read: if estaAutenticado() &&
         (resource.data.usuarioId == request.auth.uid || esAdministrador());
 
-      allow write: if estaAutenticado() &&
+      // El id es `{uid}_{areaId}` (upsertEstadistica): el uid de Firebase Auth no lleva
+      // guion bajo, asi que lo que va antes del primero es el uid del propietario.
+      allow create, update: if estaAutenticado() &&
+        statId.split('_')[0] == request.auth.uid &&
         request.resource.data.usuarioId == request.auth.uid;
+
+      allow delete: if false;
     }
 
     match /logros/{logroId} {
@@ -95,8 +127,7 @@ service cloud.firestore {
     // Estadisticas agregadas del panel de administracion
     match /estadisticas_plataforma/{docId} {
       allow read: if esAdministrador();
-      allow create: if estaAutenticado();
-      allow update, delete: if false;
+      allow write: if false;
     }
 
     // Configuracion general de la aplicacion (nombre, descripcion, email de soporte)
