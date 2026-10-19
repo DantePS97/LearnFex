@@ -83,8 +83,13 @@ service cloud.firestore {
       allow read: if estaAutenticado() &&
         (resource.data.usuarioId == request.auth.uid || esAdministrador());
 
-      allow write: if estaAutenticado() &&
+      // El id es `{uid}_{areaId}` (upsertEstadistica): el uid de Firebase Auth no lleva
+      // guion bajo, asi que lo que va antes del primero es el uid del propietario.
+      allow create, update: if estaAutenticado() &&
+        statId.split('_')[0] == request.auth.uid &&
         request.resource.data.usuarioId == request.auth.uid;
+
+      allow delete: if false;
     }
 
     match /logros/{logroId} {
