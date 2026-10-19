@@ -27,8 +27,13 @@ const Simulations = () => {
   const [areas, setAreas] = useState({});
   const [cursor, setCursor] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [hayMas, setHayMas] = useState(false);
 
   const loadQuizzes = async (next = false) => {
+    // Sin mas paginas (o con una carga en curso) no se vuelve a pedir: con
+    // cursor null la consulta traeria otra vez la primera pagina.
+    if (next && (!hayMas || loading)) return;
+
     setLoading(true);
 
     try {
@@ -41,6 +46,7 @@ const Simulations = () => {
       }
 
       setCursor(res.lastDoc);
+      setHayMas(res.hasMore);
     } catch (error) {
       console.error("Error cargando simulacros:", error);
     }
@@ -127,11 +133,13 @@ const Simulations = () => {
         )}
       </div>
 
-      <div className="simulations__actions">
-        <button onClick={() => loadQuizzes(true)} disabled={loading}>
-          {loading ? "Cargando..." : "Cargar más"}
-        </button>
-      </div>
+      {hayMas && (
+        <div className="simulations__actions">
+          <button onClick={() => loadQuizzes(true)} disabled={loading}>
+            {loading ? "Cargando..." : "Cargar más"}
+          </button>
+        </div>
+      )}
     </div>
   );
 };
