@@ -72,6 +72,52 @@
 	border-radius: var(--radius-sm);
 }
 
+/* Casilla de consentimiento (registro) */
+
+.auth-consent {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.auth-consent-row {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--space-xs);
+}
+
+.auth-consent-checkbox {
+	flex-shrink: 0;
+
+	width: 18px;
+	height: 18px;
+	margin: 1px 0 0;
+
+	accent-color: var(--color-primary);
+	cursor: pointer;
+}
+
+.auth-consent-checkbox:focus-visible {
+	outline: 2px solid var(--color-primary);
+	outline-offset: 2px;
+}
+
+.auth-consent-checkbox:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.auth-consent-label {
+	color: var(--color-text-secondary);
+	font-size: var(--font-size-sm);
+	line-height: 1.5;
+}
+
+.auth-consent-label a {
+	color: var(--color-primary);
+	text-decoration: underline;
+}
+
 .auth-links {
 	display: flex;
 	flex-direction: column;

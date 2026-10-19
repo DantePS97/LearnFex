@@ -14,7 +14,15 @@ import {
 
 import { db } from "../config/firebase";
 
-const CAMPOS_PROTEGIDOS = ["rol", "estado", "xp", "nivel", "correo"];
+const CAMPOS_PROTEGIDOS = [
+	"rol",
+	"estado",
+	"xp",
+	"nivel",
+	"correo",
+	"consentimientoDatos",
+	"fechaConsentimiento",
+];
 
 export const getUserById = async (uid) => {
 	const ref = doc(db, "usuarios", uid);
@@ -31,7 +39,15 @@ export const getUserById = async (uid) => {
 	};
 };
 
-export const createUserProfile = async (uid, { nombre, apellido, correo, rol = "estudiante" }) => {
+export const createUserProfile = async (
+	uid,
+	{ nombre, apellido, correo, rol = "estudiante", consentimientoDatos },
+) => {
+	// Evidencia del consentimiento (Ley 1581 de 2012): sin aceptación explícita no se crea el perfil.
+	if (consentimientoDatos !== true) {
+		throw new Error("Se requiere el consentimiento para el tratamiento de datos personales.");
+	}
+
 	const ref = doc(db, "usuarios", uid);
 
 	await setDoc(ref, {
@@ -44,6 +60,8 @@ export const createUserProfile = async (uid, { nombre, apellido, correo, rol = "
 		nivel: 1,
 		colegio: "",
 		fechaRegistro: serverTimestamp(),
+		consentimientoDatos: true,
+		fechaConsentimiento: serverTimestamp(),
 	});
 };
 
