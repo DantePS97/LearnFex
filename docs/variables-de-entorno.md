@@ -2,7 +2,7 @@
 
 Este documento describe todas las variables de entorno que lee el código de LearnFex. Se obtuvo buscando `import.meta.env` y `process.env` en el repositorio: el cliente las lee en `src/config/firebase.js` y el script de carga de datos en `scripts/seed-preguntas.js`. La carpeta `functions/` no lee ninguna variable de entorno propia.
 
-El repositorio no incluye un archivo `.env.example`. Para crearlo, copiar el bloque de la sección [Bloque listo para copiar](#bloque-listo-para-copiar) a un archivo nuevo en la raíz del repositorio. Se recomienda guardarlo con el nombre `.env.local` para uso personal (ignorado por git) y, si el equipo quiere un ejemplo versionado, con el nombre `.env.example` y sin valores reales.
+El repositorio incluye un archivo `.env.example`, versionado, que sirve de plantilla con valores de ejemplo (así lo describe el commit que lo agregó; este documento no reproduce su contenido). Para trabajar, copiarlo a un archivo `.env.local` en la raíz del repositorio (ignorado por git) y reemplazar los valores; el bloque de la sección [Bloque listo para copiar](#bloque-listo-para-copiar) tiene todas las variables que lee el código y puede usarse igual. `.env.example` nunca debe llevar valores reales.
 
 ## Cliente (Vite)
 
@@ -50,8 +50,8 @@ El usuario administrador debe existir en Firebase Authentication y su documento 
 ## Reglas de manejo
 
 - No versionar nunca `SEED_ADMIN_PASSWORD` ni ningún archivo que la contenga.
-- El `.gitignore` del repositorio ignora `.env` y `*.local` (por lo que `.env.local` queda ignorado). No ignora otros nombres que Vite también carga, como `.env.production`, `.env.development` o `.env.test`. No guardar valores reales en archivos con esos nombres, o agregarlos al `.gitignore`.
-- Un archivo `.env.example` con valores de ejemplo sí puede versionarse, siempre que no contenga valores reales.
+- El `.gitignore` del repositorio ignora `.env`, `.env.production`, `.env.development`, `.env.test` y `*.local` (por lo que `.env.local` queda ignorado). Vite carga `.env.<modo>` para cualquier modo, así que un archivo con otro nombre (por ejemplo `.env.staging`) no está cubierto: no guardar valores reales en él o agregarlo al `.gitignore`.
+- `.env.example` sí está versionado y debe contener solo valores de ejemplo; nunca valores reales.
 - Si se publica el sitio en Vercel, cargar las variables `VITE_*` en la configuración del proyecto (Settings, Environment Variables) para los entornos que correspondan. No cargar `VITE_USE_EMULATORS` o dejarla en `false`.
 
 ## Bloque listo para copiar
