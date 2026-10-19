@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import * as userService from "../../../services/userService";
@@ -17,7 +17,11 @@ function Register() {
 	const [contrasena, setContrasena] = useState("");
 	const [confirmarContrasena, setConfirmarContrasena] = useState("");
 
+	const [aceptaPolitica, setAceptaPolitica] = useState(false);
+	const checkboxPoliticaRef = useRef(null);
+
 	const [errorConfirmacion, setErrorConfirmacion] = useState("");
+	const [errorPolitica, setErrorPolitica] = useState("");
 	const [error, setError] = useState("");
 	const [enviando, setEnviando] = useState(false);
 
@@ -42,6 +46,12 @@ function Register() {
 			return false;
 		}
 
+		if (!aceptaPolitica) {
+			setErrorPolitica("Debés aceptar la política de tratamiento de datos personales para registrarte");
+			checkboxPoliticaRef.current?.focus();
+			return false;
+		}
+
 		return true;
 	};
 
@@ -50,6 +60,7 @@ function Register() {
 
 		setError("");
 		setErrorConfirmacion("");
+		setErrorPolitica("");
 
 		if (!validar()) {
 			return;
@@ -58,7 +69,7 @@ function Register() {
 		setEnviando(true);
 
 		try {
-			await userService.registerUser(correo, contrasena, nombre, apellido);
+			await userService.registerUser(correo, contrasena, nombre, apellido, aceptaPolitica);
 
 			navigate("/inicio");
 		} catch (err) {
@@ -131,6 +142,40 @@ function Register() {
 						disabled={enviando}
 						error={errorConfirmacion}
 					/>
+
+					<div className="auth-consent">
+						<div className="auth-consent-row">
+							<input
+								ref={checkboxPoliticaRef}
+								id="aceptaPolitica"
+								name="aceptaPolitica"
+								type="checkbox"
+								className="auth-consent-checkbox"
+								checked={aceptaPolitica}
+								onChange={(event) => {
+									setAceptaPolitica(event.target.checked);
+									setErrorPolitica("");
+								}}
+								disabled={enviando}
+								aria-required="true"
+								aria-invalid={errorPolitica ? "true" : "false"}
+								aria-describedby={errorPolitica ? "aceptaPolitica-error" : undefined}
+							/>
+
+							<label className="auth-consent-label" htmlFor="aceptaPolitica">
+								Acepto la{" "}
+								<Link to="/privacidad" target="_blank" rel="noopener noreferrer">
+									política de tratamiento de datos personales
+								</Link>
+							</label>
+						</div>
+
+						{errorPolitica && (
+							<span id="aceptaPolitica-error" className="input-error" role="alert">
+								{errorPolitica}
+							</span>
+						)}
+					</div>
 
 					<Button type="submit" disabled={enviando}>
 						{enviando ? "Creando cuenta..." : "Crear cuenta"}
