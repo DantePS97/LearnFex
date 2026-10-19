@@ -131,6 +131,14 @@ function Profile() {
 				<button
 					type="button"
 					className="profile-menu-item"
+					onClick={() => navigate("/historial")}
+				>
+					📜 Historial
+				</button>
+
+				<button
+					type="button"
+					className="profile-menu-item"
 					onClick={handleChangePassword}
 				>
 					⚙️ Configuración
