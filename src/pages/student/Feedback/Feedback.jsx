@@ -11,6 +11,7 @@ const Feedback = () => {
   const { resultadoId } = useParams();
 
   const [preguntasRetroalimentacion, setPreguntasRetroalimentacion] = useState([]);
+  const [omitidas, setOmitidas] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -40,7 +41,10 @@ const Feedback = () => {
           })
         );
 
-        setPreguntasRetroalimentacion(detalles.filter((item) => item.pregunta));
+        const disponibles = detalles.filter((item) => item.pregunta);
+
+        setPreguntasRetroalimentacion(disponibles);
+        setOmitidas(detalles.length - disponibles.length);
       } catch (err) {
         console.error("Error al cargar la retroalimentación:", err);
         setError("No se pudo cargar la retroalimentación.");
@@ -81,6 +85,14 @@ const Feedback = () => {
       <header className="feedback-header">
         <h1>Retroalimentación</h1>
         <p>Revisa cada pregunta, tu respuesta y la correcta.</p>
+
+        {omitidas > 0 && (
+          <p>
+            {omitidas === 1
+              ? "1 pregunta de esta prueba ya no está disponible porque fue eliminada del banco."
+              : `${omitidas} preguntas de esta prueba ya no están disponibles porque fueron eliminadas del banco.`}
+          </p>
+        )}
       </header>
 
       <div className="feedback-list">

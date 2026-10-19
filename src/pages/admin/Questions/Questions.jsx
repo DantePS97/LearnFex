@@ -280,7 +280,9 @@ function Questions() {
 
 	const eliminarPregunta = async (pregunta) => {
 		const confirmar = window.confirm(
-			"¿Seguro que quieres eliminar esta pregunta?"
+			"¿Seguro que querés eliminar esta pregunta?\n\n" +
+				"Si ya se usó en pruebas completadas, esos resultados dejarán de mostrarla " +
+				"en la retroalimentación de los estudiantes. Esta acción no se puede deshacer."
 		);
 
 		if (!confirmar) return;
