@@ -3,7 +3,7 @@
 Este documento valida el comportamiento responsive de las pantallas del Sprint 5 de LearnFex: Resultados (`Results.jsx`), Estadísticas (`Statistics.jsx`), Historial (`History.jsx`), Ranking (`Ranking.jsx`) y Logros (`Achievements.jsx`).
 
 - Estado del documento: plantilla de ejecución. Ningún caso fue ejecutado todavía; todas las casillas de resultado están vacías a propósito.
-- Verificado contra el código de `main` en el commit `c3d71aa`. Si `main` cambió desde entonces, revisar los casos antes de ejecutarlos.
+- Verificado contra el código de `main` en el commit `99a359d` (2026-10-19). Si `main` cambió desde entonces, revisar los casos antes de ejecutarlos. Actualizado tras el Sprint 7: aviso "¡Logro desbloqueado!" en Resultados (PR #95), Historial con título y tiempo y accesible desde Perfil (PR #98), Estadísticas con estado vacío (PR #99), Ranking responsive (PR #100), página 404 (PR #105) y política de privacidad pública (PR #87).
 - Autoría original del borrador: Juliana Martínez (PR #64). Corregido contra el código real: el borrador cubría Retroalimentación, Estadísticas y Ranking, y no cubría Resultados ni Logros. Actualizado tras la migración de colores a tokens (PRs de CSS #50 a #52 y #73 a #75: cambios de color, sin cambios de layout ni de cortes; Ranking y Resultados pasaron de tema claro a oscuro) y tras agregar la pantalla Historial (PR #67).
 - Requisito que cubre (ERS): diseño adaptable a distintos tamaños de pantalla (RNF-010). El contenido funcional de estas pantallas (ranking, estadísticas, historial) se verifica en `docs/qa/integracion-end-to-end.md`.
 
@@ -15,14 +15,15 @@ Este documento valida el comportamiento responsive de las pantallas del Sprint 5
 
 ## Cómo está armada cada pantalla (resumen verificado en el código)
 
-- **Estadísticas (`/estadisticas`), Historial (`/historial`), Ranking (`/ranking`) y Logros (`/logros`)** están dentro de `StudentLayout`: tienen la barra superior y la inferior. Menos de 768 px: la barra superior muestra solo la marca y la barra inferior fija (70 px) tiene 5 elementos (Inicio, Práctica, Estadísticas, Ranking, Perfil). Desde 768 px: la barra superior muestra los 5 enlaces y no hay barra inferior. Logros no figura en esa navegación: se llega desde Perfil, botón "Logros". Historial tampoco: se llega desde Práctica, botón "Historial" (que se oculta en 600 px o menos).
+- **Estadísticas (`/estadisticas`), Historial (`/historial`), Ranking (`/ranking`) y Logros (`/logros`)** están dentro de `StudentLayout`: tienen la barra superior y la inferior. Menos de 768 px: la barra superior muestra solo la marca y la barra inferior fija (70 px) tiene 5 elementos (Inicio, Práctica, Estadísticas, Ranking, Perfil). Desde 768 px: la barra superior muestra los 5 enlaces y no hay barra inferior. Logros no figura en esa navegación: se llega desde Perfil, botón "Logros". Historial tampoco: se llega desde Perfil (elemento "Historial" del menú, en cualquier ancho) o desde Práctica, botón "Historial" (que se oculta en 600 px o menos).
 - **Tema de color:** Resultados, Estadísticas, Historial y Ranking usan los tokens de `src/styles/variables.css` (superficies `--color-surface` y `--color-surface-alt`, texto blanco, acento celeste `--color-primary`) y se ven sobre fondo oscuro; Logros tiene colores propios, también oscuros. Ranking y Resultados antes tenían tema claro: al revisar cada caso, comprobar también que ningún texto quede ilegible por contraste (por ejemplo texto oscuro sobre fondo oscuro).
 - **Resultados (`/resultados/:id`)** está fuera de `StudentLayout` (`src/routes/AppRoutes.jsx`, flujo de resolución de pruebas): no tiene barra superior ni inferior en ningún ancho.
 - Cortes de CSS de cada pantalla:
   - Resultados: 768 px (la tarjeta principal pasa a columna, las 3 tarjetas de datos a 1 columna y los botones a columna de ancho completo) y 480 px (círculo de puntaje más chico).
   - Estadísticas: 950 px (las tarjetas pasan a 2 columnas) y 650 px (1 columna, encabezado en columna y botones de ancho completo).
   - Historial: 720 px (el encabezado pasa a columna y cada fila pasa de una sola línea a un bloque: título y fecha arriba, tres datos iguales en el medio y estado con flecha abajo). Ancho máximo del contenido: 900 px.
-  - Ranking: 850 px (el podio pasa a 1 columna, se oculta la fila de títulos de la tabla y se reduce la grilla de la fila) y 550 px (avatar y textos más chicos).
+  - Ranking: 850 px (el podio pasa a 1 columna, se oculta la fila de títulos de la tabla y la fila de cada estudiante pasa a 4 columnas: posición, estudiante, nivel de 80 px y puntos de 100 px) y 550 px (la fila pasa a 3 columnas: posición, estudiante y puntos; se oculta la columna del nivel; avatar y textos más chicos). En ningún ancho se ocultan los puntos.
+  - Resultados: además, si la prueba desbloqueó logros, se agrega una tarjeta "¡Logro desbloqueado!" por logro (solo al llegar desde la prueba), con el estilo de las tarjetas de datos.
   - Logros: no tiene cortes propios; es una lista vertical centrada de ancho máximo 500 px.
 - Las barras de progreso de Estadísticas no son CSS propio de la pantalla: usan el componente compartido `ProgressBar` (`src/components/ProgressBar/ProgressBar.jsx`): nombre del área a la izquierda, porcentaje a la derecha y una pista de 10 px de alto con relleno proporcional. El color del relleno depende del valor (80% o más "success", 60% o más "primary", menos de 60% "danger").
 
@@ -123,12 +124,14 @@ Este documento valida el comportamiento responsive de las pantallas del Sprint 5
 
 1. Observar las tarjetas "Preguntas", "Correctas" e "Incorrectas" y los botones "Volver al inicio", "Ver retroalimentación" y "Nuevo cuestionario" en 1280, 769, 768 y 375 px.
 2. Tocar cada botón en 375 px y verificar que quedan accesibles.
+3. Con una cuenta nueva (sin logros), terminar la primera prueba y observar la pantalla de resultados en 1280, 769, 768 y 375 px: debe aparecer la tarjeta "¡Logro desbloqueado!" con el nombre "Primer paso".
 
 **Resultado esperado:**
 
 - En 769 px o más, las 3 tarjetas van en una fila de 3 columnas y los 3 botones en una fila alineada a la derecha, sin cortarse ni apilarse de forma irregular.
 - Hasta 768 px, las tarjetas van una debajo de otra y los botones ocupan todo el ancho, uno debajo del otro.
 - Los números y etiquetas se leen completos. Los botones navegan a `/inicio`, a la retroalimentación y a `/practica`.
+- Paso 3: la tarjeta "¡Logro desbloqueado!" (con un icono de medalla y el nombre del logro debajo) se ve completa, sin cortarse, entre las tarjetas de datos y los botones, y con el mismo estilo de las tarjetas "Correctas"; en 768 px o menos queda en una sola columna. Al recargar la página, la tarjeta desaparece (es lo esperado).
 
 **Resultado:**
 
@@ -197,14 +200,16 @@ Este documento valida el comportamiento responsive de las pantallas del Sprint 5
 
 **Pasos:**
 
-1. Observar las barras de las 5 áreas en 375, 768 y 1280 px. Tener áreas con porcentajes en los tres rangos (80% o más, de 60% a 79%, menos de 60%) y alguna en 0%.
+1. Observar las barras de las 5 áreas en 375, 768 y 1280 px. Tener áreas con porcentajes en los tres rangos (80% o más, de 60% a 79%, menos de 60%) y alguna sin pruebas.
 2. Comparar el porcentaje escrito con el largo del relleno.
+3. Con una cuenta sin ninguna prueba, abrir `/estadisticas` en 375 y 1280 px.
 
 **Resultado esperado:**
 
-- Cada barra muestra el nombre del área a la izquierda y el porcentaje a la derecha; ambos se leen completos aunque el nombre del área sea largo (por ejemplo "Ciencias Sociales y Ciudadanas").
+- Cada barra muestra el nombre del área a la izquierda y el porcentaje a la derecha; ambos se leen completos aunque el nombre del área sea largo (por ejemplo "Ciencias Sociales y Ciudadanas"). Las áreas sin pruebas llevan "(sin pruebas)" junto al nombre y 0%.
 - La pista ocupa todo el ancho disponible, no se deforma en 375 px y el relleno es proporcional al porcentaje. Una barra en 0% muestra solo la pista vacía; en 100% la llena.
 - El color del relleno es distinto según el rango (80% o más, 60% o más, menos de 60%) y se distingue del fondo con contraste suficiente.
+- Paso 3: en lugar de las barras se ve el estado vacío ("Todavía no tienes progreso registrado." con el botón "Comenzar una práctica", que navega a `/practica`), centrado y sin cortes. Las tarjetas "Promedio general" (0%) y "Pruebas" (0) se siguen viendo.
 
 **Resultado:**
 
@@ -223,11 +228,13 @@ Este documento valida el comportamiento responsive de las pantallas del Sprint 5
 
 **Pasos:**
 
-1. Observar las tarjetas de temas recomendados (áreas con menos de 60%) y el bloque final con el botón "Empezar" en 1280, 768, 651, 650 y 375 px.
+1. Observar las tarjetas de temas recomendados (áreas con pruebas y menos de 60%) y el bloque final con el botón "Empezar" en 1280, 768, 651, 650 y 375 px.
+2. Con una cuenta sin pruebas, y luego con una cuenta con pruebas en todas las áreas y 60% o más en cada una, observar la sección "Temas recomendados".
 
 **Resultado esperado:**
 
-- Cada tema recomendado muestra nombre, la leyenda "Refuerza esta área" y la etiqueta "Recomendado" sin cortarse; hasta 650 px la etiqueta se ajusta alineada a la derecha.
+- Cada tema recomendado muestra nombre, la leyenda "Refuerza esta área" y el porcentaje del área en rojo, sin cortarse; hasta 650 px el porcentaje se ajusta alineado a la derecha. Solo aparecen áreas en las que hay al menos una prueba (hasta dos).
+- Paso 2: sin pruebas se ve "Hacé tu primera práctica para recibir recomendaciones."; con todas las áreas en 60% o más se ve "¡Muy bien! Ninguna área está por debajo del 60%.". Ambos mensajes quedan centrados y legibles.
 - Hasta 650 px, el bloque final pasa a columna y el botón "Empezar" ocupa todo el ancho.
 
 **Resultado:**
@@ -253,10 +260,11 @@ Este documento valida el comportamiento responsive de las pantallas del Sprint 5
 **Resultado esperado:**
 
 - Desde 851 px el podio muestra los 3 primeros lado a lado y la tabla tiene su fila de títulos (Pos., Estudiante, Nivel, Puntos) con las 4 columnas alineadas.
-- Hasta 850 px el podio pasa a una columna y la fila de títulos se oculta.
-- En todos los anchos cada fila del ranking muestra la posición, el estudiante y sus puntos ("{n} pts"), sin cortes ni superposiciones. A 550 px o menos el avatar y los textos son más chicos pero legibles.
+- Hasta 850 px el podio pasa a una columna y la fila de títulos se oculta. Cada fila muestra 4 columnas: posición, estudiante, nivel y puntos ("{n} pts"), sin columnas vacías.
+- Hasta 550 px cada fila muestra 3 columnas: posición, estudiante y puntos; la columna del nivel se oculta. El avatar y los textos son más chicos pero legibles.
+- **En todos los anchos se ven los puntos de cada fila** ("{n} pts", alineados a la derecha en 850 px o menos), sin cortes ni superposiciones.
 
-**Comportamiento actual conocido (posible defecto, por lectura del CSS):** hasta 850 px el CSS oculta el tercer y el cuarto elemento de cada fila (`.ranking-row > div:nth-child(3)` y `:nth-child(4)`), que corresponden al nivel y a los puntos (`Ranking.jsx` renderiza 4 elementos por fila). Por eso en pantallas de hasta 850 px puede no verse el puntaje de cada fila, y la grilla de la fila (3 columnas) queda con una columna vacía. Si al ejecutar no se ven los puntos, registrar la falla con el ancho exacto: es un hallazgo real. Además la grilla de escritorio declara 5 columnas para 4 elementos.
+**Nota:** hasta el PR #100 el CSS ocultaba el nivel y los puntos en pantallas de hasta 850 px y la grilla de escritorio declaraba una columna de más. Si en algún ancho no se ven los puntos, es una regresión: registrarla con el ancho exacto.
 
 **Resultado:**
 
@@ -358,20 +366,21 @@ Este documento valida el comportamiento responsive de las pantallas del Sprint 5
 
 ## Caso 12: Historial - lista de resultados y estado vacío
 
-**Pantalla:** `/historial` (se llega desde Práctica con el botón "Historial", visible desde 601 px, o escribiendo la URL).
+**Pantalla:** `/historial` (se llega desde Perfil con el elemento "Historial" del menú, en cualquier ancho, o desde Práctica con el botón "Historial", visible desde 601 px).
 
 **Precondiciones:** estudiante con al menos 3 resultados guardados, de preferencia uno con 60% o más y otro con menos. Para el estado vacío hace falta una cuenta de estudiante sin ninguna prueba; si no hay, dejar ese paso sin marcar y explicarlo en Observaciones. El índice compuesto de `resultados` debe estar desplegado en el proyecto de pruebas (ver `docs/qa/integracion-end-to-end.md`, paso 5.12).
 
 **Pasos:**
 
-1. Abrir `/historial` en 1280, 769, 768, 721, 720 y 375 px. Observar el encabezado ("MI PROGRESO", "Historial", botón "Practicar") y las filas.
-2. En cada fila, ubicar: el título "Cuestionario" con la fecha, "Puntaje", "Correctas", "Incorrectas", la etiqueta de estado y la flecha.
+1. Abrir `/historial` en 1280, 769, 768, 721, 720 y 375 px (en 375 px, llegando desde Perfil). Observar el encabezado ("MI PROGRESO", "Historial", botón "Practicar") y las filas. Tener al menos un cuestionario por área y un simulacro entre los resultados.
+2. En cada fila, ubicar: el título de la prueba (por ejemplo "Cuestionario de Matemáticas" o "Simulacro general") con la fecha, hora y tiempo empleado ("m:ss min"), "Puntaje", "Correctas", "Incorrectas", la etiqueta de estado y la flecha.
 3. En escritorio, pasar el mouse sobre una fila y recorrer las filas con la tecla Tab.
 4. Con la cuenta sin pruebas, abrir `/historial` en 375 y 1280 px.
 
 **Resultado esperado:**
 
 - El contenido está centrado y no pasa de 900 px de ancho. Hay barra superior o inferior según el ancho, como en Estadísticas, y ningún elemento de la navegación figura como activo.
+- Cada fila muestra el título del cuestionario o simulacro (no un título fijo) y, junto a la fecha y hora, el tiempo empleado en formato "m:ss min". Un título largo no desborda la fila ni empuja los datos.
 - Desde 721 px el encabezado va en fila (título a la izquierda, "Practicar" a la derecha) y cada resultado ocupa una sola línea: título y fecha, los tres datos y el estado con la flecha.
 - Hasta 720 px el encabezado va en columna y cada resultado se acomoda en tres bloques: título y fecha arriba, "Puntaje", "Correctas" e "Incorrectas" en tres columnas iguales en el medio, y abajo el estado y la flecha en los extremos opuestos. No hay textos cortados ni desplazamiento horizontal de la página en ningún ancho.
 - Se distinguen los colores: "Correctas" en verde, "Incorrectas" en rojo, "Aprobado" verde y "No aprobado" rojo, todos legibles sobre el fondo oscuro. Al pasar el mouse la fila se levanta un poco y su borde toma el color primario; con Tab se ve el contorno de foco.
@@ -381,6 +390,36 @@ Este documento valida el comportamiento responsive de las pantallas del Sprint 5
 
 - 375 px: [ ] Pasa  [ ] Falla
 - 720 / 721 px: [ ] Pasa  [ ] Falla
+- 768 px: [ ] Pasa  [ ] Falla
+- 1280 px: [ ] Pasa  [ ] Falla
+- Fecha / Tester / Entorno:
+- Evidencia (captura, log o enlace):
+- Observaciones:
+
+---
+
+## Caso 13: Pantallas públicas del Sprint 7 - registro con consentimiento, `/privacidad` y página 404
+
+**Pantallas:** `/registro`, `/privacidad` y una dirección inexistente (por ejemplo `/ruta-que-no-existe`). Ninguna requiere sesión.
+
+**Pasos:**
+
+1. Abrir `/registro` en 1280, 768 y 375 px. Observar la casilla "Acepto la política de tratamiento de datos personales". Tocar "Crear cuenta" con todos los campos completos y la casilla sin marcar.
+2. Tocar el texto enlazado de la casilla.
+3. Abrir `/privacidad` en 1280, 768, 481, 480 y 375 px y desplazarse hasta el final. Tocar "Volver a LearnFex".
+4. Abrir `/ruta-que-no-existe` en 1280 y 375 px, con y sin sesión iniciada. Tocar "Volver al inicio".
+
+**Resultado esperado:**
+
+- Paso 1: la casilla y su texto se ven completos y alineados en todos los anchos, sin cortarse ni desbordar la tarjeta del formulario. Con la casilla sin marcar aparece, debajo de ella, "Debés aceptar la política de tratamiento de datos personales para registrarte" y el foco pasa a la casilla; no se crea la cuenta.
+- Paso 2: la política se abre en una pestaña nueva (`/privacidad`), sin perder lo escrito en el formulario.
+- Paso 3: la política es una tarjeta centrada de hasta 760 px de ancho; hasta 480 px el relleno de la página y de la tarjeta se reduce. Los textos largos se ajustan al ancho (no hay desplazamiento horizontal). "Volver a LearnFex" navega a `/`.
+- Paso 4: se ve la tarjeta "Página no encontrada" con el texto "La dirección que abriste no existe." y el enlace "Volver al inicio", centrada y legible en ambos anchos. Con sesión, el enlace lleva a `/inicio`; sin sesión, termina en `/` (inicio de sesión).
+
+**Resultado:**
+
+- 375 px: [ ] Pasa  [ ] Falla
+- 480 / 481 px: [ ] Pasa  [ ] Falla
 - 768 px: [ ] Pasa  [ ] Falla
 - 1280 px: [ ] Pasa  [ ] Falla
 - Fecha / Tester / Entorno:
