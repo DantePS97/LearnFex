@@ -558,7 +558,8 @@ async function seed() {
 				"Este script necesita autenticarse como un usuario con rol 'administrador' " +
 				"(firestore.rules exige esAdministrador() para escribir en areas/preguntas/logros).\n" +
 				"Ese usuario tiene que existir ya en Firebase Auth y tener rol: 'administrador' " +
-				"seteado a mano en su documento de Firestore (usuarios/{uid}), ya que el panel de administración todavía no existe."
+				"seteado a mano en su documento de Firestore (usuarios/{uid}): el primer administrador hay que crearlo así, " +
+				"porque las reglas no permiten que nadie se asigne ese rol; después se pueden gestionar los roles desde el panel de usuarios."
 		);
 		process.exit(1);
 	}

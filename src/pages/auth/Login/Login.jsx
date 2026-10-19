@@ -50,7 +50,7 @@ function Login() {
 		try {
 			const perfil = await userService.getUserProfile(credenciales.user.uid);
 
-			if (perfil?.estado === "inactivo") {
+			if (userService.esCuentaInactiva(perfil)) {
 				setError(MENSAJE_CUENTA_INACTIVA);
 				setEnviando(false);
 				return;

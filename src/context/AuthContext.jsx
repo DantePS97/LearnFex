@@ -19,7 +19,7 @@ export function AuthProvider({ children }) {
 				if (firebaseUser) {
 					const perfil = await userService.getUserProfile(firebaseUser.uid);
 
-					if (perfil?.estado === "inactivo") {
+					if (userService.esCuentaInactiva(perfil)) {
 						setCuentaInactiva(true);
 						setUser(null);
 						setProfile(null);
@@ -53,7 +53,7 @@ export function AuthProvider({ children }) {
 		try {
 			const perfil = await userService.getUserProfile(auth.currentUser.uid);
 
-			if (perfil?.estado === "inactivo") {
+			if (userService.esCuentaInactiva(perfil)) {
 				setCuentaInactiva(true);
 				setUser(null);
 				setProfile(null);

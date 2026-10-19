@@ -26,6 +26,12 @@ export const getUserProfile = (uid) => {
 	return userRepository.getUserById(uid);
 };
 
+// Misma regla que estaActivo() de firestore.rules: solo es activa una cuenta sin perfil, sin campo
+// `estado` o con estado === "activo"; cualquier otro valor (incluido null) la deja inactiva.
+export const esCuentaInactiva = (perfil) => {
+	return Boolean(perfil) && Object.hasOwn(perfil, "estado") && perfil.estado !== "activo";
+};
+
 export const updateUserProfile = (uid, changes) => {
 	return userRepository.updateUserProfile(uid, changes);
 };
