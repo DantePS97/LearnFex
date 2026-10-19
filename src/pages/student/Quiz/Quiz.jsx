@@ -27,6 +27,7 @@ export default function Quiz() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [errorEnvio, setErrorEnvio] = useState("");
   const [enviando, setEnviando] = useState(false);
 
   const finalizadoRef = useRef(false);
@@ -37,6 +38,7 @@ export default function Quiz() {
 
     finalizadoRef.current = true;
     setEnviando(true);
+    setErrorEnvio("");
 
     try {
       const respuestasEstudiante = preguntas.map((pregunta) => ({
@@ -62,7 +64,7 @@ export default function Quiz() {
       }
 
       console.error("Error al calificar la prueba:", err);
-      setError("No se pudo calificar el cuestionario.");
+      setErrorEnvio("No se pudo enviar tu prueba. Revisá tu conexión y volvé a intentar.");
       finalizadoRef.current = false;
       setEnviando(false);
     }
@@ -164,6 +166,22 @@ export default function Quiz() {
     setCurrentIndex(index);
   };
 
+  const handleFinalizar = () => {
+    const sinResponder = preguntas.filter(
+      (item) => respuestas[item.id] === undefined || respuestas[item.id] === null
+    ).length;
+
+    if (sinResponder > 0) {
+      const confirmar = window.confirm(
+        `Te quedan ${sinResponder} pregunta(s) sin responder. ¿Querés finalizar igual?`
+      );
+
+      if (!confirmar) return;
+    }
+
+    finalizarCuestionario(time);
+  };
+
   if (loading) {
     return (
       <div className="quiz-screen quiz-screen--centrado">
@@ -237,6 +255,21 @@ export default function Quiz() {
           onSeleccionar={handleSeleccionar}
         />
 
+        {errorEnvio && (
+          <section className="question-navigation" role="alert">
+            <p>{errorEnvio}</p>
+
+            <button
+              type="button"
+              className="next-button"
+              onClick={() => finalizarCuestionario(time)}
+              disabled={enviando}
+            >
+              {enviando ? "Enviando..." : "Reintentar"}
+            </button>
+          </section>
+        )}
+
         <div className="question-controls">
 
           <button
@@ -252,7 +285,7 @@ export default function Quiz() {
             <button
               type="button"
               className="next-button"
-              onClick={() => finalizarCuestionario(time)}
+              onClick={handleFinalizar}
               disabled={enviando}
             >
               {enviando ? "Enviando..." : "Finalizar"}
