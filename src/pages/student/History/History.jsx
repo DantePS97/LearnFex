@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./History.css";
 
+import { getQuizById } from "../../../repositories/quizRepository";
 import { getResultadosByUsuario } from "../../../repositories/resultRepository";
 import { useAuth } from "../../../hooks/useAuth";
 import Button from "../../../components/Button/Button";
@@ -40,6 +41,27 @@ const formatDate = (date) => {
 
 const isPassed = (puntaje) => Number(puntaje ?? 0) >= PUNTAJE_APROBATORIO;
 
+// tiempoEmpleado llega en segundos (lo guarda la Cloud Function).
+const formatDuracion = (segundos) => {
+	if (typeof segundos !== "number") return "";
+
+	// Se redondea antes de dividir para evitar "4:60 min" con segundos fraccionarios.
+	const total = Math.round(segundos);
+	const minutos = Math.floor(total / 60);
+	const resto = String(total % 60).padStart(2, "0");
+
+	return `${minutos}:${resto} min`;
+};
+
+// Los resultados viejos sin tiempoEmpleado solo muestran la fecha.
+const formatFechaYDuracion = (resultado) => {
+	const duracion = formatDuracion(resultado.tiempoEmpleado);
+
+	return duracion
+		? `${formatDate(resultado.fecha)} · ${duracion}`
+		: formatDate(resultado.fecha);
+};
+
 const History = () => {
 	const navigate = useNavigate();
 	const { user, loading: authLoading } = useAuth();
@@ -57,8 +79,28 @@ const History = () => {
 		let cancelado = false;
 
 		getResultadosByUsuario(user.uid)
-			.then((data) => {
-				if (!cancelado) setResultados(data || []);
+			.then(async (data) => {
+				const lista = data || [];
+
+				// Cada intento crea su propio cuestionario: un getQuizById por resultado,
+				// en paralelo. Si uno falla, esa fila conserva el texto "Cuestionario".
+				const titulos = await Promise.all(
+					lista.map(async (resultado) => {
+						try {
+							const cuestionario = await getQuizById(resultado.cuestionarioId);
+
+							return cuestionario?.titulo ?? "Cuestionario";
+						} catch {
+							return "Cuestionario";
+						}
+					})
+				);
+
+				if (!cancelado) {
+					setResultados(
+						lista.map((resultado, indice) => ({ ...resultado, titulo: titulos[indice] }))
+					);
+				}
 			})
 			.catch((err) => {
 				console.error("Error al cargar el historial:", err);
@@ -173,8 +215,8 @@ const History = () => {
 									</div>
 
 									<div className="history-item-info">
-										<strong>Cuestionario</strong>
-										<span>{formatDate(resultado.fecha)}</span>
+										<strong>{resultado.titulo}</strong>
+										<span>{formatFechaYDuracion(resultado)}</span>
 									</div>
 								</div>
 
