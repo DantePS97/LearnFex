@@ -76,7 +76,8 @@ service cloud.firestore {
 
     match /ranking/{rankingId} {
       allow read: if estaAutenticado();
-      allow write: if esPropioUsuario(rankingId) || esAdministrador();
+      // Solo escribe la Cloud Function calificarPrueba con Admin SDK (no pasa por las reglas).
+      allow write: if false;
     }
 
     match /estadisticas_progreso/{statId} {
