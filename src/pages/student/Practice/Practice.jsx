@@ -49,6 +49,10 @@ function Practice() {
     navigate("/practica/cuestionario", { state: { areaId: area.id } });
   };
 
+  const handleSimulacro = () => {
+    navigate("/practica/cuestionario", { state: { areaId: null } });
+  };
+
   return (
     <div className="practice-page">
       <div className="practice-container">
@@ -122,6 +126,31 @@ function Practice() {
             </button>
           ))}
         </div>
+
+        {/* SIMULACRO COMPLETO */}
+        <section className="practice-featured">
+          <div className="practice-featured-content">
+            <span className="practice-featured-label">SIMULACRO</span>
+
+            <h2>Simulacro completo</h2>
+
+            <p>
+              Preguntas de las cinco áreas con tiempo controlado, como en el
+              Saber 11.
+            </p>
+          </div>
+
+          <div className="practice-featured-action">
+            <button
+              type="button"
+              className="practice-button practice-button-primary"
+              disabled={loading || areas.length === 0}
+              onClick={handleSimulacro}
+            >
+              Iniciar simulacro
+            </button>
+          </div>
+        </section>
 
         {/* ÁREAS DISPONIBLES */}
         <section className="practice-section">
