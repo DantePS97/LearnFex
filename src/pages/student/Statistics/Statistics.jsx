@@ -167,7 +167,7 @@ const Estadistica = () => {
 
         <div className="estadistica-progress-list">
 
-          {porArea.length > 0 ? (
+          {general.totalPruebas > 0 ? (
             porArea.map((area) => (
               <div
                 className="estadistica-progress-item"
@@ -175,14 +175,20 @@ const Estadistica = () => {
               >
                 <ProgressBar
                   value={area.promedioAciertos}
-                  label={area.nombre}
+                  label={
+                    area.totalPruebas === 0
+                      ? `${area.nombre} (sin pruebas)`
+                      : area.nombre
+                  }
                   showPercentage
                   variant={
-                    area.promedioAciertos >= 80
-                      ? "success"
-                      : area.promedioAciertos >= 60
-                        ? "primary"
-                        : "danger"
+                    area.totalPruebas === 0
+                      ? "primary"
+                      : area.promedioAciertos >= 80
+                        ? "success"
+                        : area.promedioAciertos >= 60
+                          ? "primary"
+                          : "danger"
                   }
                 />
               </div>
@@ -235,16 +241,16 @@ const Estadistica = () => {
             temasRecomendados.map((tema) => (
               <article
                 className="estadistica-result"
-                key={tema}
+                key={tema.nombre}
               >
                 <div className="estadistica-result-info">
 
                   <div className="estadistica-result-icon">
-                    ✓
+                    !
                   </div>
 
                   <div>
-                    <strong>{tema}</strong>
+                    <strong>{tema.nombre}</strong>
 
                     <span>Refuerza esta área</span>
                   </div>
@@ -253,7 +259,7 @@ const Estadistica = () => {
 
                 <div className="estadistica-result-score">
                   <strong className="estadistica-result-low">
-                    Recomendado
+                    {tema.promedioAciertos}%
                   </strong>
                 </div>
               </article>
@@ -263,7 +269,9 @@ const Estadistica = () => {
               <span>📊</span>
 
               <p>
-                No hay temas recomendados por ahora.
+                {general.totalPruebas === 0
+                  ? "Hacé tu primera práctica para recibir recomendaciones."
+                  : "¡Muy bien! Ninguna área está por debajo del 60%."}
               </p>
             </div>
           )}
