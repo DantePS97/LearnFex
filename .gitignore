@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 .env
+.env.production
+.env.development
+.env.test
 
 # Firebase emulators
 emulator-data/
