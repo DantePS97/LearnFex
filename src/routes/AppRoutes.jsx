@@ -5,6 +5,7 @@ import Register from "../pages/auth/Register/Register";
 import ForgotPassword from "../pages/auth/ForgotPassword/Forgotpassword";
 
 import Privacy from "../pages/legal/Privacy/Privacy";
+import NotFound from "../pages/NotFound/NotFound";
 
 import Home from "../pages/student/Home/Home";
 import Practice from "../pages/student/Practice/Practice";
@@ -84,6 +85,8 @@ function AppRoutes() {
 					<Route path="/admin/logros" element={<Settings />} />
 				</Route>
 			</Route>
+
+			<Route path="*" element={<NotFound />} />
 		</Routes>
 	);
 }
