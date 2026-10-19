@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState } from "react";
+import { createContext, useCallback, useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 
 import { auth } from "../config/firebase";
@@ -36,11 +36,24 @@ export function AuthProvider({ children }) {
 		return () => unsubscribe();
 	}, []);
 
+	const refreshProfile = useCallback(async () => {
+		if (!auth.currentUser) return;
+
+		try {
+			const perfil = await userService.getUserProfile(auth.currentUser.uid);
+
+			setProfile(perfil);
+		} catch (error) {
+			console.error("No se pudo refrescar el perfil:", error);
+		}
+	}, []);
+
 	const value = {
 		user,
 		profile,
 		rol: profile?.rol ?? null,
 		loading,
+		refreshProfile,
 	};
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
