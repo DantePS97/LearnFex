@@ -1,14 +1,34 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function estaAutenticado() {
+    // Hay una sesion de Firebase Auth (sin mirar el perfil en Firestore).
+    function haySesion() {
       return request.auth != null;
+    }
+
+    // Lista blanca (falla cerrado): el usuario cuenta como activo SOLO si (1) todavia no tiene
+    // perfil (en el registro, Auth crea la cuenta antes que createUserProfile cree usuarios/{uid}),
+    // (2) su perfil no tiene campo `estado`, o (3) `estado == 'activo'`. Cualquier otro valor
+    // ('inactivo', 'Inactivo', 'suspendido', true, '', null...) bloquea. Los perfiles legitimos
+    // solo tienen 'activo' o 'inactivo' (createUserProfile, la regla de create y setUserEstado).
+    // Costo: exists() + get() del mismo documento usuarios/{uid}; Firestore los cobra como
+    // UNA lectura por solicitud aunque la regla lo mencione varias veces.
+    function estaActivo() {
+      return !exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) ||
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.get('estado', 'activo') == 'activo';
+    }
+
+    // Sesion valida Y cuenta no desactivada. Es la puerta de casi todas las reglas.
+    function estaAutenticado() {
+      return haySesion() && estaActivo();
     }
 
     function esPropioUsuario(usuarioId) {
       return estaAutenticado() && request.auth.uid == usuarioId;
     }
 
+    // Un administrador desactivado deja de serlo (pasa por estaAutenticado()). Un
+    // administrador activo no cambia: sigue leyendo usuarios/{uid}.data.rol como antes.
     function esAdministrador() {
       return estaAutenticado() &&
         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'administrador';
@@ -45,7 +65,10 @@ service cloud.firestore {
     }
 
     match /usuarios/{usuarioId} {
-      allow read: if esPropioUsuario(usuarioId) || esAdministrador();
+      // Excepcion deliberada: el propietario lee su perfil AUNQUE este inactivo (solo haySesion, sin
+      // estaActivo), porque AuthContext lo lee para descubrir que esta inactivo y cerrarle la sesion.
+      // Es lo unico que un inactivo puede hacer; ademas no suma lecturas de reglas.
+      allow read: if (haySesion() && request.auth.uid == usuarioId) || esAdministrador();
 
       allow create: if esPropioUsuario(usuarioId) &&
         request.resource.data.rol == 'estudiante' &&
@@ -55,7 +78,11 @@ service cloud.firestore {
         request.resource.data.consentimientoDatos == true &&
         request.resource.data.fechaConsentimiento == request.time;
 
-      allow update: if esAdministrador() || (esPropioUsuario(usuarioId) && esActualizacionDePerfil());
+      // La rama de administrador vale SOLO sobre documentos ajenos: un administrador no puede
+      // cambiar su propio estado ni su propio rol (se auto-inactivaria y, al dejar de ser admin,
+      // no podria volver). Sobre su propio documento solo edita nombre, apellido y colegio.
+      allow update: if (esAdministrador() && request.auth.uid != usuarioId) ||
+        (esPropioUsuario(usuarioId) && esActualizacionDePerfil());
 
       allow delete: if false;
 
