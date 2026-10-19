@@ -9,7 +9,7 @@ import { useAuth } from "../../../hooks/useAuth";
 const Results = () => {
   const navigate = useNavigate();
   const { resultadoId } = useParams();
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
 
   const [resultado, setResultado] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -61,6 +61,10 @@ const Results = () => {
 
     loadResultado();
   }, [resultadoId, user]);
+
+  useEffect(() => {
+    refreshProfile();
+  }, [resultadoId, refreshProfile]);
 
   const getResultStatus = (data) =>
     Number(data?.puntaje ?? 0) >= 60 ? "Aprobado" : "No aprobado";
