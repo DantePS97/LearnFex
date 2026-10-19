@@ -3,6 +3,7 @@
 Este documento es la plantilla de ejecución del recorrido completo de LearnFex: los módulos del estudiante y los del administrador, más los cruces entre ambos. Sirve para registrar, con evidencia, qué se probó, quién lo probó y qué resultó.
 
 - Estado del documento: **ejecutado el 2026-10-18** contra el proyecto de Firebase del equipo `learnfex-dev-oscar`, con el cliente local. Resultado: 81 pasos PASA, 3 FALLA y 5 No ejecutados, de 89 (detalle en "Resumen de la ejecución"). Fue una ejecución del implementador del proyecto (un agente de Claude), **no una verificación independiente de QA**: conviene que una persona del equipo la repita o la revise antes de darla por aprobada.
+- Una sección "Actualización posterior (2026-10-19)" al final indica qué pasos fallidos ya tienen corrección en `main` (sin volver a ejecutarse) y qué casos agregar a la próxima ejecución; no modifica ningún resultado de este registro.
 - Ejecutado contra el código de `main` en el commit `3ac0365`. La versión anterior del documento estaba verificada contra `c3d71aa`; desde entonces cambiaron el Inicio del estudiante (PR #82, ahora muestra datos reales) y el panel de administración (botón "Cerrar sesión"), y por eso se actualizaron los pasos 1.4, 1.5 y A1.1 y la nota inicial del recorrido del administrador.
 - Autoría original del borrador: Silvana Castro (PR #61). El borrador declaraba los 8 módulos como aprobados sin evidencia; este documento lo reemplaza.
 - Actualizado tras los merges del seed de 40 preguntas (PR #65), la pantalla de historial `/historial` (PR #67), el menú completo de Perfil con cierre de sesión (PR #53) y la lista de `/admin/simulacros` (PR #76). El módulo 8 (menú del Perfil) y el módulo A4 (Simulacros) pasaron de "bloqueado/esperado a fallar" a módulos normales.
@@ -537,3 +538,61 @@ Se creó y se borró por REST (y por `accounts:delete` en Auth) todo lo temporal
 
 - Documentos relacionados en `docs/qa/`: `casos-prueba-simulacros.md`, `casos-prueba-gamificacion.md`, `verificacion-rbac.md`, `verificacion-responsive-practica.md` y `verificacion-responsive-sprint5.md`.
 - Si un paso falla, registrar los pasos exactos para reproducirlo y el valor mostrado frente al esperado.
+
+---
+
+## Actualización posterior (2026-10-19)
+
+Esta sección se agregó después de la ejecución del 2026-10-18 y no cambia ninguno de los resultados registrados arriba. **Los pasos que figuran como Falla (5.10, A4.3 y A6.3) NO se volvieron a ejecutar y siguen figurando como Falla hasta que alguien los re-ejecute.** Aquí solo se anota qué corrección ya está mergeada en `main`, qué pasos tienen un texto descriptivo que ya no coincide con el código y qué conviene probar la próxima vez. Verificado contra `main` `99a359d`.
+
+### Pasos fallidos con corrección mergeada y desplegada
+
+Las correcciones están mergeadas en `main`. Según informó el equipo, también están desplegadas; ese dato no se puede comprobar desde el repositorio y no se verificó.
+
+| Paso | Qué fallaba (2026-10-18) | Corrección en `main` | Dónde se ve en el código |
+| ---- | ------------------------ | -------------------- | ------------------------ |
+| A4.3 | "Cargar más" de `/admin/simulacros` no desaparecía al llegar a la última página y repetía filas | PR #85 (commit `d9e7724`): `getAllQuizzes` pide un documento de más y devuelve `hasMore`; la pantalla oculta el botón cuando no hay más páginas | `src/repositories/quizRepository.js:57-96`, `src/pages/admin/Simulations/Simulations.jsx:30-55` y `136-142` |
+| 5.10 | La fila del historial no mostraba el área ni el tiempo y titulaba "Cuestionario" a los simulacros | PR #98 (commit `294dec0`): cada fila muestra el título del cuestionario y el tiempo empleado, y el historial se abre desde Perfil | `src/pages/student/History/History.jsx:85-101` y `218-219`, `src/pages/student/Profile/Profile.jsx:131-137` |
+| A6.3 | "Promedio general" se veía sin `%` en Reportes | PR #107 (commit `2f59690`) | `src/pages/admin/Reports/Reports.jsx:68` |
+
+Aclaración sobre 5.10: la ERS (RF-012) pide fecha, área, puntaje y tiempo. Hoy el área figura dentro del título de los cuestionarios por área ("Cuestionario de {área}"), el simulacro se titula "Simulacro general" y no hay una columna de área aparte. Quien re-ejecute debe decidir si eso alcanza para marcar Pasa.
+
+### Pasos cuyo texto descriptivo ya no coincide con el código
+
+Estos pasos quedaron registrados como Pasa y no se modificaron. Al volver a ejecutarlos hay que considerar lo siguiente.
+
+| Paso | Qué dice el registro | Qué hace el código hoy |
+| ---- | -------------------- | ---------------------- |
+| 1.1 | Registrarse con nombre, apellido, correo y contraseña | Además hay que marcar la casilla "Acepto la política de tratamiento de datos personales"; sin ella no se crea la cuenta (PR #87). El perfil queda con `consentimientoDatos: true` y `fechaConsentimiento` (`src/pages/auth/Register/Register.jsx:49-53`, `src/repositories/userRepository.js:51-65`) |
+| 1.5 y 7.1 | Sin recargar, tras una prueba, el XP puede verse desactualizado | Al abrir la pantalla de resultados se vuelve a leer el perfil: Inicio y Perfil ya muestran el XP nuevo sin recargar (PR #97; `src/pages/student/Results/Results.jsx:65-67`) |
+| 2.4 | "Finalizar" envía la prueba | Con preguntas sin responder pide confirmación; si el envío falla, muestra "Reintentar" (PR #94; `src/pages/student/Quiz/Quiz.jsx:60-72` y `171-185`) |
+| 2.6 y observación del módulo 2 | No hay ningún botón para llegar al simulacro; el orden de `cuestionarios.preguntas` no coincide con el de pantalla | "Iniciar simulacro" en Práctica (PR #96; `src/pages/student/Practice/Practice.jsx:52-54` y `131-153`). El armado valida áreas y preguntas (`src/services/quizService.js:40-59`) y la pantalla muestra las mismas preguntas que se guardan (PR #92) |
+| 3.1 | Resultados muestra puntaje, cantidades y fecha | Si la prueba desbloqueó logros, muestra además "¡Logro desbloqueado!" (PR #95; `Results.jsx:257-270`) |
+| 3.2 | Retroalimentación sin aviso de preguntas faltantes | Si una pregunta fue eliminada, la pantalla lo avisa (PR #104; `src/pages/student/Feedback/Feedback.jsx:89-95`) |
+| 5.2, 5.3 | Las áreas sin pruebas muestran 0% y también se recomiendan | Las áreas sin pruebas se marcan "(sin pruebas)" y NO se recomiendan; sin ninguna prueba se ve un estado vacío (PR #99; `src/pages/student/Statistics/Statistics.jsx:170-211` y `240-275`, `src/services/statisticsService.js:89-93`) |
+| 5.6 | En 600 px o menos no hay otro acceso al historial que escribir la URL | El menú de Perfil tiene "Historial" en cualquier ancho (PR #98; `Profile.jsx:131-137`) |
+| 5.7 | Cada fila muestra "Cuestionario" como título | Muestra el título real y el tiempo empleado (ver 5.10) |
+| A2.4 | Cambiar el rol de una cuenta de prueba | Funciona para cuentas ajenas; la fila propia tiene el selector deshabilitado (PR #106; `src/pages/admin/Users/Users.jsx:236-239`) |
+| A2.5 | Una cuenta inactiva puede seguir usando la aplicación | Una cuenta inactiva no puede iniciar sesión y las reglas le niegan los datos (PR #101 y #108); la fila propia tiene el botón de estado deshabilitado |
+| A3.3, A3.4 | Dificultad de la pregunta (si el paso la menciona) | El formulario usa Baja, Media y Alta (PR #90; `src/pages/admin/Questions/Questions.jsx:22-27`) |
+| A3.7 | El aviso de eliminar es "¿Seguro que quieres eliminar esta pregunta?" y no advierte sobre resultados guardados | El aviso es "¿Seguro que querés eliminar esta pregunta?" y advierte el impacto sobre resultados y que no se puede deshacer (PR #104; `Questions.jsx:281-286`) |
+| A4.1 | Lista de simulacros | En pantallas angostas la tabla se desplaza hacia los lados (PR #103; `src/pages/admin/Simulations/Simulations.css:12-23` y `33`) |
+| A6.3 | Dashboard con `%` y Reportes sin `%` | Ambos con `%` (ver arriba) |
+
+### Casos nuevos que conviene agregar a la próxima ejecución
+
+1. Registro con consentimiento: sin marcar la casilla (mensaje y sin cuenta), marcándola (perfil con `consentimientoDatos` y `fechaConsentimiento`), y abrir `/privacidad` desde el enlace de la casilla y escribiendo la URL sin sesión.
+2. Cuenta desactivada de punta a punta: como administrador desactivar a B; B no puede iniciar sesión (mensaje "Tu cuenta está desactivada. Contactá a un administrador."); con la sesión de B ya abierta, recargar cierra la sesión; reactivar a B. Variantes de `estado` inválido (`"Inactivo"`, `"suspendido"`, vacío) y usuario sin campo `estado`: ver los casos nuevos de `verificacion-rbac.md`.
+3. Administrador sobre su propia fila en `/admin/usuarios`: selector de rol y botón de estado deshabilitados; ningún cambio posible sobre el propio documento.
+4. Página 404 con y sin sesión: `/ruta-que-no-existe` muestra "Página no encontrada"; el enlace "Volver al inicio" lleva a `/inicio` (o a `/` sin sesión).
+5. Simulacro desde Práctica: botón "Iniciar simulacro", con 5 áreas y con un área sin preguntas (mensaje "Faltan preguntas en: ..." y sin documento nuevo en `cuestionarios`).
+6. Aviso de logro: tarjeta "¡Logro desbloqueado!" al terminar la 1.ª, la 5.ª y la 10.ª prueba, y que no aparezca al recargar el resultado.
+7. Confirmar al finalizar con preguntas sin responder, y "Reintentar" tras un fallo de envío (red en modo sin conexión), comprobando que no se duplica el resultado.
+8. XP al día: Inicio y Perfil muestran el XP nuevo tras una prueba sin recargar.
+9. Historial desde Perfil en 375 y 600 px, con título del cuestionario y tiempo empleado; fila de simulacro titulada "Simulacro general".
+10. Estadísticas con una cuenta sin pruebas (estado vacío y mensaje de recomendaciones) y con solo simulacros; recomendaciones solo para áreas con pruebas.
+11. Ranking en móvil (550 px o menos): se ven los puntos de cada fila.
+12. Temporizador del cuestionario fijo y visible en 375 px mientras se desplaza la página.
+13. Eliminar una pregunta usada en pruebas: aviso previo y mensaje de pregunta eliminada en la retroalimentación.
+14. Tabla de `/admin/simulacros` con desplazamiento horizontal en 375 px y botón "Cargar más" que desaparece en la última página (repite A4.3).
+15. Volver a ejecutar los pasos que fallaron (5.10, A4.3 y A6.3) y, en `verificacion-rbac.md`, las filas 14.3, 14.4, 15.5, 16.4 y el caso 18.
