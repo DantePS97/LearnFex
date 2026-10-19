@@ -65,7 +65,7 @@ const Reports = () => {
 
         <div className="card">
           <p>Promedio general</p>
-          <strong>{stats.promedioGeneral}</strong>
+          <strong>{stats.promedioGeneral}%</strong>
         </div>
       </div>
 
