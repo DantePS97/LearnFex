@@ -87,10 +87,10 @@ export const calcularEstadisticas = async (usuarioId) => {
 	};
 
 	const temasRecomendados = porArea
-		.filter((area) => area.promedioAciertos < UMBRAL_RECOMENDACION)
+		.filter((area) => area.totalPruebas > 0 && area.promedioAciertos < UMBRAL_RECOMENDACION)
 		.sort((a, b) => a.promedioAciertos - b.promedioAciertos)
 		.slice(0, 2)
-		.map((area) => area.nombre);
+		.map((area) => ({ nombre: area.nombre, promedioAciertos: area.promedioAciertos }));
 
 	return { porArea, general, temasRecomendados };
 };
