@@ -3,6 +3,7 @@ import { onAuthStateChanged } from "firebase/auth";
 
 import { auth } from "../config/firebase";
 import * as userService from "../services/userService";
+import * as authServices from "../services/authServices";
 
 export const AuthContext = createContext(null);
 
@@ -10,6 +11,7 @@ export function AuthProvider({ children }) {
 	const [user, setUser] = useState(null);
 	const [profile, setProfile] = useState(null);
 	const [loading, setLoading] = useState(true);
+	const [cuentaInactiva, setCuentaInactiva] = useState(false);
 
 	useEffect(() => {
 		const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -17,6 +19,15 @@ export function AuthProvider({ children }) {
 				if (firebaseUser) {
 					const perfil = await userService.getUserProfile(firebaseUser.uid);
 
+					if (perfil?.estado === "inactivo") {
+						setCuentaInactiva(true);
+						setUser(null);
+						setProfile(null);
+						await authServices.logout();
+						return;
+					}
+
+					setCuentaInactiva(false);
 					setUser(firebaseUser);
 					setProfile(perfil);
 				} else {
@@ -42,6 +53,14 @@ export function AuthProvider({ children }) {
 		try {
 			const perfil = await userService.getUserProfile(auth.currentUser.uid);
 
+			if (perfil?.estado === "inactivo") {
+				setCuentaInactiva(true);
+				setUser(null);
+				setProfile(null);
+				await authServices.logout();
+				return;
+			}
+
 			setProfile(perfil);
 		} catch (error) {
 			console.error("No se pudo refrescar el perfil:", error);
@@ -53,6 +72,7 @@ export function AuthProvider({ children }) {
 		profile,
 		rol: profile?.rol ?? null,
 		loading,
+		cuentaInactiva,
 		refreshProfile,
 	};
 
