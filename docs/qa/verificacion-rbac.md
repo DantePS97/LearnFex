@@ -2,9 +2,9 @@
 
 Este documento valida que el control de acceso de LearnFex funcione en dos niveles: las rutas de la aplicación (qué pantallas puede abrir cada rol) y los datos de Firestore (qué puede leer y escribir cada rol según `firestore.rules`).
 
-- Estado del documento: plantilla de ejecución. Ningún caso fue ejecutado todavía; todas las casillas de resultado están vacías a propósito.
-- Verificado contra el código de `main` en el commit `c3d71aa`. Si `main` cambió desde entonces, revisar los casos antes de ejecutarlos.
-- Autoría original del borrador: Juliana Martínez (PR #62). El borrador estaba cortado en el caso 2; este documento lo completa. Actualizado tras agregar la ruta `/historial` (PR #67) y el cierre de sesión en Perfil (PR #53).
+- Estado del documento: ejecutado el 2026-10-18 (tarjeta [Sprint 6 - 12] [01]). Cada caso tiene marcado su resultado y la evidencia observada. Ver "Datos de la ejecución" (qué entorno se usó para cada caso) y el "Resumen de ejecución" al final. La ejecución la hizo quien implementó el proyecto con ayuda de IA, no un tester independiente.
+- Verificado contra el código de `main` en el commit `3ac0365` (ejecución del 2026-10-18). La versión anterior del documento se había verificado contra `c3d71aa`. Si `main` cambió desde entonces, revisar los casos antes de volver a ejecutarlos.
+- Autoría original del borrador: Juliana Martínez (PR #62). El borrador estaba cortado en el caso 2; este documento lo completa. Actualizado tras agregar la ruta `/historial` (PR #67), el cierre de sesión en Perfil (PR #53) y, en la ejecución, tras el despliegue de las reglas de la tarjeta [Sprint 6 - 36] y el botón de cierre de sesión del panel de administración.
 - Requisitos que cubre (ERS): acceso restringido según el rol con reglas de seguridad de Firestore (RNF-005), protección de los datos personales y del historial de resultados (RNF-006), gestión de usuarios por el administrador (RF-020) y el inicio de sesión que dirige al panel según el rol (RF-002).
 
 ---
@@ -20,15 +20,15 @@ Rutas (`src/routes/AppRoutes.jsx`):
 - No hay ruta comodín: una URL inexistente (por ejemplo `/home`) muestra una pantalla en blanco, sin página 404.
 - El rol sale del campo `rol` del documento `usuarios/{uid}`, que `AuthContext` carga una sola vez al iniciar sesión o recargar la página.
 - Al iniciar sesión, `Login.jsx` navega a `/admin` si el rol es `administrador` y a `/inicio` en cualquier otro caso (también si falla la lectura del perfil).
-- El botón "Cerrar sesión" está solo en Perfil (`/perfil`): pide confirmación (`window.confirm`), llama a `authServices.logout()` y navega a `/`. El panel de administración no tiene botón propio; un administrador puede cerrar sesión entrando a `/perfil` (ver el caso 6). Para probar otra cuenta se puede usar ese botón o ventanas privadas distintas.
+- El botón "Cerrar sesión" está en Perfil (`/perfil`) y también en el encabezado del panel de administración (`AdminLayout`, commit `8212b28`). En ambos pide confirmación (`window.confirm`), llama a `authServices.logout()` y navega a `/`. Para probar otra cuenta se puede usar ese botón o ventanas privadas distintas.
 
 Datos (`firestore.rules`), resumen:
 
-- `usuarios/{id}`: lee el propio usuario o un administrador. Crea solo el propio usuario con `rol: estudiante`, `estado: activo`, `xp: 0`, `nivel: 1`. Actualiza un administrador cualquier campo; el propio usuario solo `nombre`, `apellido`, `colegio` o (hoy) `xp`/`nivel`. Nadie puede borrar.
-- `usuarios/{id}/logrosObtenidos`: lee el propio usuario o un administrador; crea el propio usuario (hoy); sin update ni delete.
+- `usuarios/{id}`: lee el propio usuario o un administrador. Crea solo el propio usuario con `rol: estudiante`, `estado: activo`, `xp: 0`, `nivel: 1`. Actualiza un administrador cualquier campo; el propio usuario solo `nombre`, `apellido` o `colegio` (desde el despliegue de la tarjeta 6-36 ya no puede tocar `xp` ni `nivel`). Nadie puede borrar.
+- `usuarios/{id}/logrosObtenidos`: lee el propio usuario o un administrador; sin create, update ni delete desde el cliente (los otorga el servidor).
 - `areas`, `preguntas`, `logros`, `configuracion`: leen todos los usuarios con sesión; escribe solo un administrador.
 - `cuestionarios`: lee y crea cualquier usuario con sesión; actualiza y borra solo un administrador.
-- `resultados` y `resultados/{id}/respuestas`: lee el dueño (`usuarioId`) o un administrador; crea el dueño (hoy); sin update ni delete.
+- `resultados` y `resultados/{id}/respuestas`: lee el dueño (`usuarioId`) o un administrador; sin create, update ni delete desde el cliente.
 - `ranking/{id}`: lee cualquier usuario con sesión; escribe el dueño del documento (el `id` es su UID) o un administrador.
 - `estadisticas_progreso`: lee el dueño o un administrador; escribe cualquier usuario con sesión siempre que el documento nuevo tenga su propio `usuarioId`.
 - `estadisticas_plataforma`: lee solo un administrador; cualquier usuario con sesión puede crear; sin update ni delete.
@@ -36,7 +36,9 @@ Datos (`firestore.rules`), resumen:
 
 ## Hallazgo de seguridad vigente
 
-Hoy `firestore.rules` todavía deja que un estudiante suba su propio XP y nivel y cree `resultados` y `logrosObtenidos` desde el cliente. Eso se cierra con la tarjeta de Notion **[Sprint 6 - 36] Reglas de Firestore**, que va después del despliegue de la función `calificarPrueba`. Los casos de datos de este documento marcan con "esperado a fallar hasta la tarjeta 6-36" lo que hoy está abierto. Además, este documento deja anotadas otras brechas de las reglas que no están en esa lista: ver "Brechas detectadas" al final.
+Las reglas de la tarjeta de Notion **[Sprint 6 - 36] Reglas de Firestore** ya están desplegadas en `learnfex-dev-oscar` (release del 2026-10-15 19:02 UTC, idénticas a `firestore.rules` de `main`): un estudiante ya no puede subir su propio XP y nivel ni crear `resultados`, `respuestas` ni `logrosObtenidos` desde el cliente. Los casos 9.15, 10.5, 13.8 y 13.9 pasan desde ese despliegue.
+
+Siguen abiertas las brechas que cubren las tarjetas de Sprint 7, y la ejecución las confirmó (marcadas como falla conocida en cada caso): `ranking` escribible por el dueño ([Sprint 7 - 02]), `estadisticas_progreso` escribible sobre el documento de otro usuario ([Sprint 7 - 01]), `cuestionarios` y `estadisticas_plataforma` sin validar ([Sprint 7 - 03]), `preguntas` legible con la respuesta correcta ([Sprint 7 - 04]) y usuarios inactivos sin restricción ([Sprint 7 - 05] [01] en pantalla y [02] en reglas). Ver "Brechas detectadas" al final.
 
 ---
 
@@ -54,14 +56,17 @@ Hoy `firestore.rules` todavía deja que un estudiante suba su propio XP y nivel 
 
 | Campo | Valor |
 | ----- | ----- |
-| Fecha | |
-| Tester | |
-| Entorno (URL, navegador y versión) | |
-| Commit o rama probada | |
-| Proyecto de Firebase | |
-| Estudiante A (correo y UID) | |
-| Estudiante B (correo y UID) | |
-| Administrador C (correo y UID) | |
+| Fecha | 2026-10-18 |
+| Tester | Claude (implementador del proyecto; ejecución no independiente de QA) |
+| Entorno R (proyecto real, solo sin sesión) | `learnfex-dev-oscar` (reglas desplegadas el 2026-10-15 19:02 UTC; el ruleset publicado se comparó con `firestore.rules` de `main` y es idéntico), cliente local Vite sobre `main` 3ac0365 (puerto 5301) y SDK web de Firebase 12.18.0 desde Node. Solo se hicieron lecturas y escrituras sin sesión sobre ids `qa-rbac-*`, todas denegadas |
+| Entorno E (emulador local, todo lo que requiere sesión) | Emulator Suite local (Authentication y Firestore, proyecto `demo-learnfex-qa-rbac`) cargando el `firestore.rules` de `main` 3ac0365; la aplicación de ese commit apuntando al emulador (`VITE_USE_EMULATORS=true`, tres servidores Vite en los puertos 5311, 5312 y 5313 para tener sesiones separadas por origen) y el navegador integrado de Claude Desktop (viewport 1024x768). Los casos de datos se ejecutaron con un script de Node y el SDK web 12.18.0 con un cliente por rol |
+| Commit o rama probada | `main` 3ac0365 (rama `docs/QAEjecucionRBAC` creada desde `origin/main`) |
+| Proyecto de Firebase | Entorno R: `learnfex-dev-oscar`. Entorno E: `demo-learnfex-qa-rbac` (emulador, descartado al terminar) |
+| Estudiante A (correo y UID) | `qa-rbac-mverz52n-a@example.com`, UID de emulador `ZkCbqksUhnJZwaeZ7Zkm6mqYS3AM` |
+| Estudiante B (correo y UID) | `qa-rbac-mverz52n-b@example.com`, UID de emulador `AiDF5EANuaVxGVxEmX3EO6mCOoFl` |
+| Administrador C (correo y UID) | `qa-rbac-mverz52n-c@example.com`, UID de emulador `6nvvttAMRE1C2q0UpqSSOaN7k27z` |
+
+Desvío respecto del plan original: no se crearon cuentas de Authentication ni datos en `learnfex-dev-oscar` (no se inició sesión contra el servicio de identidad real ni se escribió en el proyecto del equipo). Por eso todo lo que exige sesión se ejecutó en el emulador local con las mismas reglas (el ruleset desplegado es idéntico al archivo del repositorio, comparado byte a byte tras normalizar saltos de línea), y en el proyecto real solo se ejecutó lo que no necesita sesión. Limitaciones del emulador: no exige el índice compuesto de `firestore.indexes.json` (caso 13, fila 4) y no reproduce el estado real de los datos del proyecto. Los usuarios `qa-rbac-*` también tienen un usuario inactivo (D, `qa-rbac-mverz52n-d@example.com`) y un usuario de registro nuevo (E) usados en los casos 9 y 18; el emulador se descartó al terminar.
 
 ## Cómo registrar el resultado
 
@@ -89,10 +94,10 @@ Hoy `firestore.rules` todavía deja que un estudiante suba su propio XP y nivel 
 
 **Resultado:**
 
-- Resultado: [ ] Pasa  [ ] Falla  [ ] Bloqueado
-- Fecha / Tester / Entorno:
-- Evidencia (captura, log o enlace):
-- Observaciones:
+- Resultado: [x] Pasa  [ ] Falla  [ ] Bloqueado
+- Fecha / Tester / Entorno: 2026-10-18 / Claude (implementador del proyecto; ejecución no independiente de QA) / Entorno R (`learnfex-dev-oscar`, cliente local Vite sobre `main` 3ac0365)
+- Evidencia (captura, log o enlace): las diez URL terminaron en `/` con el título "Iniciar sesión" (cada una cargada en un marco de la misma página sin sesión, más una carga directa de `/practica` en la pestaña). En ninguna se registró una solicitud de recursos a `googleapis.com`/Firestore (0 de 10).
+- Observaciones: el texto transitorio "Verificando sesión..." no se observó (dura milisegundos); el código de `PrivateRoutes` lo muestra mientras `loading` es verdadero. El navegador integrado no muestra las solicitudes de Firestore en la pestaña Red, por eso se usaron las entradas de rendimiento de la página.
 
 ---
 
@@ -112,10 +117,10 @@ Hoy `firestore.rules` todavía deja que un estudiante suba su propio XP y nivel 
 
 **Resultado:**
 
-- Resultado: [ ] Pasa  [ ] Falla  [ ] Bloqueado
-- Fecha / Tester / Entorno:
-- Evidencia (captura, log o enlace):
-- Observaciones:
+- Resultado: [x] Pasa  [ ] Falla  [ ] Bloqueado
+- Fecha / Tester / Entorno: 2026-10-18 / Claude (implementador del proyecto; ejecución no independiente de QA) / Entorno R (`learnfex-dev-oscar`, cliente local Vite sobre `main` 3ac0365)
+- Evidencia (captura, log o enlace): las siete rutas terminaron en `/` con el título "Iniciar sesión"; 0 solicitudes a `googleapis.com`/Firestore en cada una.
+- Observaciones: ninguna salvo la nota de medición del caso 1.
 
 ---
 
@@ -138,10 +143,10 @@ Hoy `firestore.rules` todavía deja que un estudiante suba su propio XP y nivel 
 
 **Resultado:**
 
-- Resultado: [ ] Pasa  [ ] Falla  [ ] Bloqueado
-- Fecha / Tester / Entorno:
-- Evidencia (captura, log o enlace):
-- Observaciones:
+- Resultado: [x] Pasa  [ ] Falla  [ ] Bloqueado
+- Fecha / Tester / Entorno: 2026-10-18 / Claude (implementador del proyecto; ejecución no independiente de QA) / Entorno E (aplicación de `main` 3ac0365 contra el emulador local)
+- Evidencia (captura, log o enlace): con A (rol `estudiante`) las siete rutas terminaron en `/inicio`, con la pantalla de inicio del estudiante y sin el texto "Panel de administración". Prueba de "Atrás": desde `/perfil` se abrió `/admin/usuarios`, la URL pasó a `/inicio` y "Atrás" volvió a `/perfil` (no a `/admin/usuarios`).
+- Observaciones: no se capturó el tráfico a Firestore por colección; la guarda redirige antes de montar el panel (`AdminRoute.jsx`: `Navigate replace` antes de `Outlet`).
 
 ---
 
@@ -164,10 +169,10 @@ Hoy `firestore.rules` todavía deja que un estudiante suba su propio XP y nivel 
 
 **Resultado:**
 
-- Resultado: [ ] Pasa  [ ] Falla  [ ] Bloqueado
-- Fecha / Tester / Entorno:
-- Evidencia (captura, log o enlace):
-- Observaciones:
+- Resultado: [x] Pasa  [ ] Falla  [ ] Bloqueado
+- Fecha / Tester / Entorno: 2026-10-18 / Claude (implementador del proyecto; ejecución no independiente de QA) / Entorno E (aplicación de `main` 3ac0365 contra el emulador local)
+- Evidencia (captura, log o enlace): tras iniciar sesión como C la URL fue `/admin` con el encabezado "Panel de administración". Las siete URL (`/admin`, `/admin/usuarios`, `/admin/preguntas`, `/admin/reportes`, `/admin/simulacros`, `/admin/configuracion`, `/admin/logros`) se cargaron sin redirigir y con el panel visible. La navegación tiene los siete enlaces (Dashboard, Usuarios, Preguntas, Simulacros, Logros, Reportes, Configuración). Recarga en `/admin/usuarios`: la URL siguió en `/admin/usuarios` con la lista de usuarios.
+- Observaciones: la navegación se comprobó por los siete enlaces con su `href` y por URL escrita; no se hizo clic en cada enlace. El texto transitorio "Verificando sesión..." no se observó.
 
 ---
 
@@ -186,10 +191,10 @@ Hoy `firestore.rules` todavía deja que un estudiante suba su propio XP y nivel 
 
 **Resultado:**
 
-- Resultado: [ ] Pasa  [ ] Falla  [ ] Bloqueado
-- Fecha / Tester / Entorno:
-- Evidencia (captura, log o enlace):
-- Observaciones:
+- Resultado: [x] Pasa  [ ] Falla  [ ] Bloqueado
+- Fecha / Tester / Entorno: 2026-10-18 / Claude (implementador del proyecto; ejecución no independiente de QA) / Entorno E (aplicación de `main` 3ac0365 contra el emulador local)
+- Evidencia (captura, log o enlace): URL final `/inicio`; enlaces de navegación: Inicio (`/inicio`), Práctica (`/practica`), Estadísticas (`/estadisticas`), Ranking (`/ranking`), Perfil (`/perfil`); 0 enlaces a `/admin`.
+- Observaciones: ninguna.
 
 ---
 
@@ -205,14 +210,14 @@ Hoy `firestore.rules` todavía deja que un estudiante suba su propio XP y nivel 
 
 **Resultado esperado (comportamiento actual):**
 
-- Las cinco pantallas se abren con normalidad (en `/perfil` también está el botón "Cerrar sesión", que es la única forma de cerrar sesión desde la interfaz siendo administrador). Si la especificación del producto exige separar totalmente al administrador de las pantallas del estudiante, anotarlo en Observaciones como brecha.
+- Las cinco pantallas se abren con normalidad (en `/perfil` también está el botón "Cerrar sesión"; el panel de administración tiene además el suyo en el encabezado). Si la especificación del producto exige separar totalmente al administrador de las pantallas del estudiante, anotarlo en Observaciones como brecha.
 
 **Resultado:**
 
-- Resultado: [ ] Pasa  [ ] Falla  [ ] Bloqueado
-- Fecha / Tester / Entorno:
-- Evidencia (captura, log o enlace):
-- Observaciones:
+- Resultado: [x] Pasa  [ ] Falla  [ ] Bloqueado
+- Fecha / Tester / Entorno: 2026-10-18 / Claude (implementador del proyecto; ejecución no independiente de QA) / Entorno E (aplicación de `main` 3ac0365 contra el emulador local)
+- Evidencia (captura, log o enlace): con C, las cinco rutas se abrieron sin redirigir (`/inicio`, `/practica`, `/historial`, `/ranking`, `/perfil`) y `/perfil` mostró el botón "Cerrar sesión". Además, el encabezado del panel de administración tiene su propio botón "Cerrar sesión" (accesible como `button "Cerrar sesión"` en `/admin/usuarios`).
+- Observaciones: el texto anterior del documento decía que el panel de administración no tenía botón de cerrar sesión; estaba desactualizado (commit `8212b28`) y se corrigió. Brecha de producto: el administrador no está separado de las pantallas del estudiante; sin tarjeta identificada, a confirmar con la especificación.
 
 ---
 
@@ -231,10 +236,10 @@ Hoy `firestore.rules` todavía deja que un estudiante suba su propio XP y nivel 
 
 **Resultado:**
 
-- Resultado: [ ] Pasa  [ ] Falla  [ ] Bloqueado
-- Fecha / Tester / Entorno:
-- Evidencia (captura, log o enlace):
-- Observaciones:
+- Resultado: [x] Pasa  [ ] Falla  [ ] Bloqueado
+- Fecha / Tester / Entorno: 2026-10-18 / Claude (implementador del proyecto; ejecución no independiente de QA) / Entorno E (aplicación de `main` 3ac0365 contra el emulador local)
+- Evidencia (captura, log o enlace): en `/home` y en `/ruta-que-no-existe` la URL no cambió, `#root` quedó vacío (0 caracteres de HTML) y la consola registró `No routes matched location "/home"` y `No routes matched location "/ruta-que-no-existe"`.
+- Observaciones: la brecha (sin página 404) se confirma; sin tarjeta identificada.
 
 ---
 
@@ -246,7 +251,7 @@ Hoy `firestore.rules` todavía deja que un estudiante suba su propio XP y nivel 
 
 1. Como C, ir a `/admin/usuarios` y localizar a A (buscador por nombre o correo).
 2. Cambiar el rol de A a "Administrador" con el selector de la fila.
-3. En la sesión de A, sin recargar, escribir `/admin`.
+3. En la sesión de A, sin recargar la página (navegación dentro de la aplicación; escribir la URL en la barra de direcciones recarga la página y equivale al paso 4), ir a `/admin`.
 4. Recargar la página (F5) en la sesión de A y escribir `/admin` otra vez.
 5. Como C, devolver el rol de A a "Estudiante". Recargar la sesión de A y escribir `/admin`.
 6. Opcional: como C, intentar cambiar el propio rol a "Estudiante".
@@ -261,10 +266,10 @@ Hoy `firestore.rules` todavía deja que un estudiante suba su propio XP y nivel 
 
 **Resultado:**
 
-- Resultado: [ ] Pasa  [ ] Falla  [ ] Bloqueado
-- Fecha / Tester / Entorno:
-- Evidencia (captura, log o enlace):
-- Observaciones:
+- Resultado: [x] Pasa  [ ] Falla  [ ] Bloqueado
+- Fecha / Tester / Entorno: 2026-10-18 / Claude (implementador del proyecto; ejecución no independiente de QA) / Entorno E (aplicación de `main` 3ac0365 contra el emulador local; C en el puerto 5312 y A en el 5311 para tener sesiones separadas)
+- Evidencia (captura, log o enlace): paso 2: el selector de A quedó en "Administrador" y una lectura REST del emulador mostró `usuarios/{A}.rol = administrador`. Paso 3: con la navegación interna sin recargar (`history.pushState` hacia `/admin`) A quedó en `/inicio`. Paso 4: tras recargar y abrir `/admin`, A vio el "Panel de administración". Paso 5: tras volver a "Estudiante" (REST: `rol = estudiante`), recargar y abrir `/admin`, A terminó en `/inicio`. Paso 6: C cambió su propio rol a "Estudiante" desde su fila, sin ningún aviso ni confirmación, y la lectura REST mostró `rol = estudiante`.
+- Observaciones: se restauró el rol de C como administrador por REST del emulador (tras el cambio ya no tenía permiso para hacerlo desde la aplicación). Se confirma la brecha menor del paso 6 (sin tarjeta identificada). El paso 3 solo es válido como navegación interna: la recarga que implica escribir la URL vuelve a leer el rol.
 
 ---
 
@@ -272,31 +277,33 @@ Hoy `firestore.rules` todavía deja que un estudiante suba su propio XP y nivel 
 
 En las tablas: A y B son estudiantes, C es administrador y "Sin sesión" es una solicitud no autenticada. "Propio" es un documento del mismo UID que el actor.
 
+Convención de evidencia de esta ejecución: salvo que se indique otra cosa, las filas se ejecutaron en el Entorno E con el SDK web (un cliente por rol); las filas "Sin sesión" se ejecutaron además en el Entorno R (`learnfex-dev-oscar`) con el mismo resultado. Un resultado `permission-denied` es el código de error del SDK de Firestore.
+
 ## Caso 9: Colección `usuarios`
 
 | # | Operación | Actor | Esperado (correcto) | Hoy | Resultado |
 | - | --------- | ----- | ------------------- | --- | --------- |
-| 1 | `get` de `usuarios/{A}` | A | Permitido | Igual | [ ] Pasa  [ ] Falla |
-| 2 | `get` de `usuarios/{B}` | A | Denegado | Igual | [ ] Pasa  [ ] Falla |
-| 3 | `list` de `usuarios` | A | Denegado | Igual | [ ] Pasa  [ ] Falla |
-| 4 | `get` y `list` de `usuarios` | Sin sesión | Denegado | Igual | [ ] Pasa  [ ] Falla |
-| 5 | `get` y `list` de `usuarios` | C | Permitido (la pantalla Usuarios lista a todos) | Igual | [ ] Pasa  [ ] Falla |
-| 6 | `update` de `usuarios/{B}` cambiando `nombre` | A | Denegado | Igual | [ ] Pasa  [ ] Falla |
-| 7 | `update` de `usuarios/{A}` cambiando solo `nombre`, `apellido` o `colegio` | A | Permitido | Igual | [ ] Pasa  [ ] Falla |
-| 8 | `update` de `usuarios/{A}` cambiando `rol`, `estado` o `correo` | A | Denegado | Igual | [ ] Pasa  [ ] Falla |
-| 9 | `update` de `usuarios/{B}` cambiando `rol` y `estado` | C | Permitido (pantalla Usuarios) | Igual | [ ] Pasa  [ ] Falla |
-| 10 | `create` de `usuarios/{uidNuevo}` con `rol: estudiante`, `estado: activo`, `xp: 0`, `nivel: 1`, autenticado como `uidNuevo` | uidNuevo | Permitido (registro) | Igual | [ ] Pasa  [ ] Falla |
-| 11 | `create` de `usuarios/{uidNuevo}` con `rol: administrador`, autenticado como `uidNuevo` | uidNuevo | Denegado | Igual | [ ] Pasa  [ ] Falla |
-| 12 | `create` de `usuarios/{otroUid}` | A | Denegado | Igual | [ ] Pasa  [ ] Falla |
-| 13 | `delete` de `usuarios/{A}` | A | Denegado | Igual | [ ] Pasa  [ ] Falla |
-| 14 | `delete` de `usuarios/{B}` | C | Denegado (nadie puede borrar usuarios) | Igual | [ ] Pasa  [ ] Falla |
-| 15 | `update` de `usuarios/{A}` subiendo `xp` o `nivel` | A | Denegado | Permitido: `xp` hasta +100 por escritura y `nivel` a cualquier valor mayor. **Esperado a fallar hasta la tarjeta 6-36** | [ ] Pasa  [ ] Falla |
+| 1 | `get` de `usuarios/{A}` | A | Permitido | Igual | [x] Pasa  [ ] Falla |
+| 2 | `get` de `usuarios/{B}` | A | Denegado | Igual | [x] Pasa  [ ] Falla |
+| 3 | `list` de `usuarios` | A | Denegado | Igual | [x] Pasa  [ ] Falla |
+| 4 | `get` y `list` de `usuarios` | Sin sesión | Denegado | Igual | [x] Pasa  [ ] Falla |
+| 5 | `get` y `list` de `usuarios` | C | Permitido (la pantalla Usuarios lista a todos) | Igual | [x] Pasa  [ ] Falla |
+| 6 | `update` de `usuarios/{B}` cambiando `nombre` | A | Denegado | Igual | [x] Pasa  [ ] Falla |
+| 7 | `update` de `usuarios/{A}` cambiando solo `nombre`, `apellido` o `colegio` | A | Permitido | Igual | [x] Pasa  [ ] Falla |
+| 8 | `update` de `usuarios/{A}` cambiando `rol`, `estado` o `correo` | A | Denegado | Igual | [x] Pasa  [ ] Falla |
+| 9 | `update` de `usuarios/{B}` cambiando `rol` y `estado` | C | Permitido (pantalla Usuarios) | Igual | [x] Pasa  [ ] Falla |
+| 10 | `create` de `usuarios/{uidNuevo}` con `rol: estudiante`, `estado: activo`, `xp: 0`, `nivel: 1`, autenticado como `uidNuevo` | uidNuevo | Permitido (registro) | Igual | [x] Pasa  [ ] Falla |
+| 11 | `create` de `usuarios/{uidNuevo}` con `rol: administrador`, autenticado como `uidNuevo` | uidNuevo | Denegado | Igual | [x] Pasa  [ ] Falla |
+| 12 | `create` de `usuarios/{otroUid}` | A | Denegado | Igual | [x] Pasa  [ ] Falla |
+| 13 | `delete` de `usuarios/{A}` | A | Denegado | Igual | [x] Pasa  [ ] Falla |
+| 14 | `delete` de `usuarios/{B}` | C | Denegado (nadie puede borrar usuarios) | Igual | [x] Pasa  [ ] Falla |
+| 15 | `update` de `usuarios/{A}` subiendo `xp` o `nivel` | A | Denegado | Igual: denegado desde el despliegue de la tarjeta 6-36 (antes se permitía `xp` hasta +100 por escritura y `nivel` a cualquier valor mayor) | [x] Pasa  [ ] Falla |
 
-Para la fila 15 ver los casos 16 y 17 de `docs/qa/casos-prueba-gamificacion.md`, que detallan los límites actuales.
+Para la fila 15, los casos 16 y 17 de `docs/qa/casos-prueba-gamificacion.md` describen los límites anteriores al despliegue de 6-36 y pueden estar desactualizados; no se revisaron en esta ejecución.
 
-- Fecha / Tester / Entorno:
-- Evidencia (captura, resultado del simulador o enlace):
-- Observaciones:
+- Fecha / Tester / Entorno: 2026-10-18 / Claude (implementador del proyecto; ejecución no independiente de QA) / Entorno E (emulador local con `firestore.rules` de `main` 3ac0365); fila 4 también en Entorno R
+- Evidencia (captura, resultado del simulador o enlace): fila 1: permitido. Filas 2, 3 y 4: `permission-denied` (la fila 4 también `permission-denied` en `learnfex-dev-oscar` para `get` y `list`). Fila 5: `get` y `list` permitidos. Fila 6: `permission-denied`. Fila 7: `nombre`, `apellido` y `colegio` permitidos, cada uno por separado. Fila 8: `rol`, `estado` y `correo` `permission-denied`, cada uno por separado. Fila 9: permitido (B pasó a `administrador` e `inactivo` y se restauró). Fila 10: permitido. Fila 11: `permission-denied` (se ejecutó antes que la 10, con el mismo UID). Filas 12, 13 y 14: `permission-denied`. Fila 15: `xp: 50`, `nivel: 2` y `xp: 100` con `nivel: 3`, los tres `permission-denied`.
+- Observaciones: sin diferencias respecto de lo esperado.
 
 ---
 
@@ -304,17 +311,17 @@ Para la fila 15 ver los casos 16 y 17 de `docs/qa/casos-prueba-gamificacion.md`,
 
 | # | Operación | Actor | Esperado (correcto) | Hoy | Resultado |
 | - | --------- | ----- | ------------------- | --- | --------- |
-| 1 | `get` y `list` de `usuarios/{A}/logrosObtenidos` | A | Permitido (pantalla Logros) | Igual | [ ] Pasa  [ ] Falla |
-| 2 | `get` y `list` de `usuarios/{B}/logrosObtenidos` | A | Denegado | Igual | [ ] Pasa  [ ] Falla |
-| 3 | `get` y `list` de `usuarios/{B}/logrosObtenidos` | C | Permitido | Igual | [ ] Pasa  [ ] Falla |
-| 4 | `get` y `list` | Sin sesión | Denegado | Igual | [ ] Pasa  [ ] Falla |
-| 5 | `create` de `usuarios/{A}/logrosObtenidos/diez_simulacros` | A | Denegado (solo la función otorga logros) | Permitido. **Esperado a fallar hasta la tarjeta 6-36** | [ ] Pasa  [ ] Falla |
-| 6 | `create` de `usuarios/{B}/logrosObtenidos/x` | A | Denegado | Igual | [ ] Pasa  [ ] Falla |
-| 7 | `update` o `delete` de un logro obtenido | A o C | Denegado | Igual | [ ] Pasa  [ ] Falla |
+| 1 | `get` y `list` de `usuarios/{A}/logrosObtenidos` | A | Permitido (pantalla Logros) | Igual | [x] Pasa  [ ] Falla |
+| 2 | `get` y `list` de `usuarios/{B}/logrosObtenidos` | A | Denegado | Igual | [x] Pasa  [ ] Falla |
+| 3 | `get` y `list` de `usuarios/{B}/logrosObtenidos` | C | Permitido | Igual | [x] Pasa  [ ] Falla |
+| 4 | `get` y `list` | Sin sesión | Denegado | Igual | [x] Pasa  [ ] Falla |
+| 5 | `create` de `usuarios/{A}/logrosObtenidos/diez_simulacros` | A | Denegado (solo la función otorga logros) | Igual: denegado desde el despliegue de la tarjeta 6-36 (antes se permitía) | [x] Pasa  [ ] Falla |
+| 6 | `create` de `usuarios/{B}/logrosObtenidos/x` | A | Denegado | Igual | [x] Pasa  [ ] Falla |
+| 7 | `update` o `delete` de un logro obtenido | A o C | Denegado | Igual | [x] Pasa  [ ] Falla |
 
-- Fecha / Tester / Entorno:
-- Evidencia (captura, resultado del simulador o enlace):
-- Observaciones:
+- Fecha / Tester / Entorno: 2026-10-18 / Claude (implementador del proyecto; ejecución no independiente de QA) / Entorno E (emulador local con `firestore.rules` de `main` 3ac0365); fila 4 también en Entorno R
+- Evidencia (captura, resultado del simulador o enlace): fila 1: `get` y `list` permitidos. Fila 2: `permission-denied` en ambos. Fila 3: permitidos. Fila 4: `permission-denied` en ambos (también en `learnfex-dev-oscar`). Fila 5: `permission-denied`. Fila 6: `permission-denied`. Fila 7: `update` y `delete` de A y de C, los cuatro `permission-denied`.
+- Observaciones: sin diferencias respecto de lo esperado.
 
 ---
 
@@ -324,18 +331,18 @@ Repetir cada fila para cada una de las cuatro colecciones (para `configuracion` 
 
 | # | Operación | Actor | Esperado (correcto) | Hoy | Resultado |
 | - | --------- | ----- | ------------------- | --- | --------- |
-| 1 | `get` y `list` | A | Permitido | Igual | [ ] Pasa  [ ] Falla |
-| 2 | `get` y `list` | Sin sesión | Denegado | Igual | [ ] Pasa  [ ] Falla |
-| 3 | `create`, `update` y `delete` | A | Denegado | Igual | [ ] Pasa  [ ] Falla |
-| 4 | `create`, `update` y `delete` | C | Permitido | Igual | [ ] Pasa  [ ] Falla |
+| 1 | `get` y `list` | A | Permitido | Igual | [x] Pasa  [ ] Falla |
+| 2 | `get` y `list` | Sin sesión | Denegado | Igual | [x] Pasa  [ ] Falla |
+| 3 | `create`, `update` y `delete` | A | Denegado | Igual | [x] Pasa  [ ] Falla |
+| 4 | `create`, `update` y `delete` | C | Permitido | Igual | [x] Pasa  [ ] Falla |
 
 Desde la interfaz, como C: crear, editar y eliminar una pregunta en `/admin/preguntas`; crear un logro en `/admin/logros`; guardar cambios en `/admin/configuracion`. Todo debe funcionar. (Las áreas no tienen pantalla de administración: se gestionan por seed o consola.)
 
-Observación para registrar (no cambia el resultado de las filas): la fila 1 sobre `preguntas` permite que cualquier estudiante lea el campo `respuestaCorrecta` (y `explicacion`) de todas las preguntas antes de hacer una prueba. Hoy la pantalla de retroalimentación lee esos campos directamente de `preguntas`. Es una brecha de diseño; no hay tarjeta identificada.
+Observación para registrar (no cambia el resultado de las filas): la fila 1 sobre `preguntas` permite que cualquier estudiante lea el campo `respuestaCorrecta` (y `explicacion`) de todas las preguntas antes de hacer una prueba. Hoy la pantalla de retroalimentación lee esos campos directamente de `preguntas`. Es una brecha de diseño; la cubre la tarjeta [Sprint 7 - 04] (decisión sobre quién puede leer la respuesta correcta).
 
-- Fecha / Tester / Entorno:
-- Evidencia (captura, resultado del simulador o enlace):
-- Observaciones:
+- Fecha / Tester / Entorno: 2026-10-18 / Claude (implementador del proyecto; ejecución no independiente de QA) / Entorno E (emulador local con `firestore.rules` de `main` 3ac0365); fila 2 también en Entorno R
+- Evidencia (captura, resultado del simulador o enlace): en las cuatro colecciones: fila 1 `get` y `list` permitidos; fila 2 `permission-denied` en `get` y `list` (también en `learnfex-dev-oscar`, incluido `configuracion/general`); fila 3 `create`, `update` y `delete` de A, los tres `permission-denied`; fila 4 `create`, `update` y `delete` de C permitidos (sobre documentos `qa-rbac-*` y, en el emulador, `configuracion/general`). Observación de `preguntas`: A leyó un documento y los campos `respuestaCorrecta` y `explicacion` estaban presentes.
+- Observaciones: la comprobación "desde la interfaz como C" (crear, editar y eliminar una pregunta, crear un logro, guardar la configuración) no se ejecutó por pantalla: se ejecutaron las operaciones equivalentes de Firestore con el SDK. La brecha de `respuestaCorrecta` se confirma (tarjeta [Sprint 7 - 04]).
 
 ---
 
@@ -343,17 +350,17 @@ Observación para registrar (no cambia el resultado de las filas): la fila 1 sob
 
 | # | Operación | Actor | Esperado (correcto) | Hoy | Resultado |
 | - | --------- | ----- | ------------------- | --- | --------- |
-| 1 | `get` y `list` | A | Permitido | Igual | [ ] Pasa  [ ] Falla |
-| 2 | `get` y `list` | Sin sesión | Denegado | Igual | [ ] Pasa  [ ] Falla |
-| 3 | `create` de un cuestionario | A | Permitido (hoy el cliente arma el cuestionario al iniciar una prueba) | Igual | [ ] Pasa  [ ] Falla |
-| 4 | `update` y `delete` | A | Denegado | Igual | [ ] Pasa  [ ] Falla |
-| 5 | `update` (por ejemplo `estado: inactivo`) | C | Permitido | Igual | [ ] Pasa  [ ] Falla |
+| 1 | `get` y `list` | A | Permitido | Igual | [x] Pasa  [ ] Falla |
+| 2 | `get` y `list` | Sin sesión | Denegado | Igual | [x] Pasa  [ ] Falla |
+| 3 | `create` de un cuestionario | A | Permitido (hoy el cliente arma el cuestionario al iniciar una prueba) | Igual | [x] Pasa  [ ] Falla |
+| 4 | `update` y `delete` | A | Denegado | Igual | [x] Pasa  [ ] Falla |
+| 5 | `update` (por ejemplo `estado: inactivo`) | C | Permitido | Igual | [x] Pasa  [ ] Falla |
 
-Observación: la fila 3 permite que cualquier usuario con sesión cree cuestionarios con el contenido que quiera; no se valida su forma ni su tamaño. Es consecuencia de que el cliente los crea; no hay tarjeta identificada.
+Observación: la fila 3 permite que cualquier usuario con sesión cree cuestionarios con el contenido que quiera; no se valida su forma ni su tamaño. Es consecuencia de que el cliente los crea; la cubre la tarjeta [Sprint 7 - 03].
 
-- Fecha / Tester / Entorno:
-- Evidencia (captura, resultado del simulador o enlace):
-- Observaciones:
+- Fecha / Tester / Entorno: 2026-10-18 / Claude (implementador del proyecto; ejecución no independiente de QA) / Entorno E (emulador local con `firestore.rules` de `main` 3ac0365); fila 2 también en Entorno R
+- Evidencia (captura, resultado del simulador o enlace): fila 1: `get` y `list` permitidos. Fila 2: `permission-denied` en ambos (también en `learnfex-dev-oscar`). Fila 3: `create` con la forma que arma la app permitido. Fila 4: `update` y `delete` `permission-denied`. Fila 5: permitido. Observación: A creó un cuestionario con 20 KB de texto arbitrario y `preguntas` con un valor que no es una lista, y el `create` fue permitido.
+- Observaciones: se confirma la falta de validación del contenido (falla conocida de diseño, tarjeta [Sprint 7 - 03]; no cambia el resultado de la fila 3).
 
 ---
 
@@ -363,24 +370,24 @@ Preparación: A y B tienen al menos un resultado cada uno (`resultados/{cuestion
 
 | # | Operación | Actor | Esperado (correcto) | Hoy | Resultado |
 | - | --------- | ----- | ------------------- | --- | --------- |
-| 1 | Abrir en la app `/resultados/{idDeA}` | A | Se ve el resultado | Igual | [ ] Pasa  [ ] Falla |
-| 2 | `get` de `resultados/{idDeB}` (en la app: abrir `/resultados/{idDeB}`) | A | Denegado; la pantalla muestra "Ocurrió un error" y "No se pudo cargar el resultado." | Igual | [ ] Pasa  [ ] Falla |
-| 3 | En la app, abrir `/resultados/{idDeB}/retroalimentacion` | A | Denegado; la pantalla muestra "No se pudo cargar la retroalimentación." | Igual | [ ] Pasa  [ ] Falla |
-| 4 | `list` de `resultados` con filtro `usuarioId == A` (las pantallas Estadísticas e Historial; esta consulta además ordena por `fecha` y necesita el índice compuesto de `firestore.indexes.json`, que el emulador no exige) | A | Permitido | Igual | [ ] Pasa  [ ] Falla |
-| 5 | `list` de `resultados` sin filtro | A | Denegado | Igual | [ ] Pasa  [ ] Falla |
-| 6 | `get` y `list` de `resultados/{idDeB}/respuestas` filtrando por `usuarioId == B` | A | Denegado | Igual | [ ] Pasa  [ ] Falla |
-| 7 | `get` y `list` de `resultados/{idDeA}/respuestas` filtrando por `usuarioId == A` | A | Permitido | Igual | [ ] Pasa  [ ] Falla |
-| 8 | `create` de `resultados/x` con `usuarioId == A` | A | Denegado (solo la función crea resultados) | Permitido. **Esperado a fallar hasta la tarjeta 6-36** | [ ] Pasa  [ ] Falla |
-| 9 | `create` de `resultados/x/respuestas/y` con `usuarioId == A` | A | Denegado | Permitido. **Esperado a fallar hasta la tarjeta 6-36** | [ ] Pasa  [ ] Falla |
-| 10 | `create` de `resultados/x` con `usuarioId == B` | A | Denegado | Igual | [ ] Pasa  [ ] Falla |
-| 11 | `update` y `delete` de cualquier resultado o respuesta | A o C | Denegado | Igual | [ ] Pasa  [ ] Falla |
-| 12 | `get` y `list` de todos los resultados | C | Permitido (Dashboard y Reportes) | Igual | [ ] Pasa  [ ] Falla |
-| 13 | En la app, abrir `/resultados/{idDeA}` | C | Las reglas permiten leerlo, pero la pantalla muestra "No tienes permiso para ver este resultado." (comprobación del cliente, `Results.jsx`) | Igual | [ ] Pasa  [ ] Falla |
-| 14 | `get` y `list` | Sin sesión | Denegado | Igual | [ ] Pasa  [ ] Falla |
+| 1 | Abrir en la app `/resultados/{idDeA}` | A | Se ve el resultado | Igual | [x] Pasa  [ ] Falla |
+| 2 | `get` de `resultados/{idDeB}` (en la app: abrir `/resultados/{idDeB}`) | A | Denegado; la pantalla muestra "Ocurrió un error" y "No se pudo cargar el resultado." | Igual | [x] Pasa  [ ] Falla |
+| 3 | En la app, abrir `/resultados/{idDeB}/retroalimentacion` | A | Denegado; la pantalla muestra "No se pudo cargar la retroalimentación." | Igual | [x] Pasa  [ ] Falla |
+| 4 | `list` de `resultados` con filtro `usuarioId == A` (las pantallas Estadísticas e Historial; esta consulta además ordena por `fecha` y necesita el índice compuesto de `firestore.indexes.json`, que el emulador no exige) | A | Permitido | Igual | [x] Pasa  [ ] Falla |
+| 5 | `list` de `resultados` sin filtro | A | Denegado | Igual | [x] Pasa  [ ] Falla |
+| 6 | `get` y `list` de `resultados/{idDeB}/respuestas` filtrando por `usuarioId == B` | A | Denegado | Igual | [x] Pasa  [ ] Falla |
+| 7 | `get` y `list` de `resultados/{idDeA}/respuestas` filtrando por `usuarioId == A` | A | Permitido | Igual | [x] Pasa  [ ] Falla |
+| 8 | `create` de `resultados/x` con `usuarioId == A` | A | Denegado (solo la función crea resultados) | Igual: denegado desde el despliegue de la tarjeta 6-36 (antes se permitía) | [x] Pasa  [ ] Falla |
+| 9 | `create` de `resultados/x/respuestas/y` con `usuarioId == A` | A | Denegado | Igual: denegado desde el despliegue de la tarjeta 6-36 (antes se permitía) | [x] Pasa  [ ] Falla |
+| 10 | `create` de `resultados/x` con `usuarioId == B` | A | Denegado | Igual | [x] Pasa  [ ] Falla |
+| 11 | `update` y `delete` de cualquier resultado o respuesta | A o C | Denegado | Igual | [x] Pasa  [ ] Falla |
+| 12 | `get` y `list` de todos los resultados | C | Permitido (Dashboard y Reportes) | Igual | [x] Pasa  [ ] Falla |
+| 13 | En la app, abrir `/resultados/{idDeA}` | C | Las reglas permiten leerlo, pero la pantalla muestra "No tienes permiso para ver este resultado." (comprobación del cliente, `Results.jsx`) | Igual | [x] Pasa  [ ] Falla |
+| 14 | `get` y `list` | Sin sesión | Denegado | Igual | [x] Pasa  [ ] Falla |
 
-- Fecha / Tester / Entorno:
-- Evidencia (captura, resultado del simulador o enlace):
-- Observaciones:
+- Fecha / Tester / Entorno: 2026-10-18 / Claude (implementador del proyecto; ejecución no independiente de QA) / Entorno E (emulador local con `firestore.rules` de `main` 3ac0365; filas 1, 2, 3 y 13 en la aplicación y el resto con el SDK); fila 14 también en Entorno R
+- Evidencia (captura, resultado del simulador o enlace): fila 1: la pantalla mostró "80%", "Aprobado" y "Tu resultado". Fila 2: la pantalla mostró "Ocurrió un error" y "No se pudo cargar el resultado.". Fila 3: la pantalla mostró "No se pudo cargar la retroalimentación.". Fila 4: permitido. Fila 5: `permission-denied`. Fila 6: `get` y `list` `permission-denied`. Fila 7: `get` y `list` permitidos. Filas 8, 9 y 10: `permission-denied`. Fila 11: `update` y `delete` de resultado y de respuesta, con A y con C, los ocho `permission-denied`. Fila 12: `get` y `list` permitidos. Fila 13: la pantalla mostró "Ocurrió un error" y "No tienes permiso para ver este resultado.". Fila 14: `permission-denied` en `get` y `list` de `resultados` y de `respuestas` (también en `learnfex-dev-oscar`).
+- Observaciones: en la fila 4 se usó `orderBy("fecha", "desc")` como la app; el índice compuesto de `firestore.indexes.json` no se pudo verificar porque el emulador no lo exige y no se consultó con sesión en el proyecto real.
 
 ---
 
@@ -388,16 +395,16 @@ Preparación: A y B tienen al menos un resultado cada uno (`resultados/{cuestion
 
 | # | Operación | Actor | Esperado (correcto) | Hoy | Resultado |
 | - | --------- | ----- | ------------------- | --- | --------- |
-| 1 | `get` y `list` (la pantalla Ranking) | A | Permitido | Igual | [ ] Pasa  [ ] Falla |
-| 2 | `get` y `list` | Sin sesión | Denegado | Igual | [ ] Pasa  [ ] Falla |
-| 3 | `set` de `ranking/{A}` con `puntajeAcumulado: 999999` | A | Denegado (el ranking lo escribe la función desde el servidor) | Permitido. **Esperado a fallar hasta la tarjeta 6-36** (confirmar que la tarjeta incluya el bloque `ranking`) | [ ] Pasa  [ ] Falla |
-| 4 | `delete` de `ranking/{A}` | A | Denegado | Permitido (la regla es `write`). Mismo tratamiento que la fila 3 | [ ] Pasa  [ ] Falla |
-| 5 | `set` de `ranking/{B}` | A | Denegado | Igual | [ ] Pasa  [ ] Falla |
-| 6 | `set` de `ranking/{B}` | C | Permitido | Igual | [ ] Pasa  [ ] Falla |
+| 1 | `get` y `list` (la pantalla Ranking) | A | Permitido | Igual | [x] Pasa  [ ] Falla |
+| 2 | `get` y `list` | Sin sesión | Denegado | Igual | [x] Pasa  [ ] Falla |
+| 3 | `set` de `ranking/{A}` con `puntajeAcumulado: 999999` | A | Denegado (el ranking lo escribe la función desde el servidor) | Permitido (confirmado). Falla conocida: la cubre la tarjeta [Sprint 7 - 02] (la tarjeta 6-36 no incluye el bloque `ranking`) | [ ] Pasa  [x] Falla |
+| 4 | `delete` de `ranking/{A}` | A | Denegado | Permitido (confirmado; la regla es `write`). Falla conocida, mismo tratamiento que la fila 3 (tarjeta [Sprint 7 - 02]) | [ ] Pasa  [x] Falla |
+| 5 | `set` de `ranking/{B}` | A | Denegado | Igual | [x] Pasa  [ ] Falla |
+| 6 | `set` de `ranking/{B}` | C | Permitido | Igual | [x] Pasa  [ ] Falla |
 
-- Fecha / Tester / Entorno:
-- Evidencia (captura, resultado del simulador o enlace):
-- Observaciones:
+- Fecha / Tester / Entorno: 2026-10-18 / Claude (implementador del proyecto; ejecución no independiente de QA) / Entorno E (emulador local con `firestore.rules` de `main` 3ac0365); fila 2 también en Entorno R
+- Evidencia (captura, resultado del simulador o enlace): fila 1: `get` y `list` permitidos. Fila 2: `permission-denied` (también en `learnfex-dev-oscar`). Fila 3: el `setDoc` de A sobre `ranking/{A}` con `puntajeAcumulado: 999999` fue permitido y una lectura posterior devolvió `999999`. Fila 4: el `deleteDoc` de A sobre `ranking/{A}` fue permitido. Fila 5: `permission-denied`. Fila 6: permitido.
+- Observaciones: filas 3 y 4: falla conocida exactamente como indica "Hoy"; no se abre un defecto nuevo. Deben pasar al cerrar [Sprint 7 - 02].
 
 ---
 
@@ -407,19 +414,19 @@ Los IDs que usa la app son `{usuarioId}_{areaId}` (por ejemplo `{A}_matematicas`
 
 | # | Operación | Actor | Esperado (correcto) | Hoy | Resultado |
 | - | --------- | ----- | ------------------- | --- | --------- |
-| 1 | `list` con filtro `usuarioId == A` | A | Permitido | Igual | [ ] Pasa  [ ] Falla |
-| 2 | `get` o `list` de documentos con `usuarioId == B` | A | Denegado | Igual | [ ] Pasa  [ ] Falla |
-| 3 | `set` de `{A}_matematicas` con `usuarioId: A` | A | Permitido (lo hace la app al abrir Estadísticas) | Igual | [ ] Pasa  [ ] Falla |
-| 4 | `set` de `{A}_matematicas` con `usuarioId: B` | A | Denegado | Igual | [ ] Pasa  [ ] Falla |
-| 5 | `set` de `{B}_matematicas` (documento de B) con `usuarioId: A` | A | Denegado (no se puede pisar ni tomar el documento de otro) | Permitido: la regla solo mira el `usuarioId` del documento nuevo, no el dueño del existente | [ ] Pasa  [ ] Falla |
-| 6 | `get` y `list` | C | Permitido | Igual | [ ] Pasa  [ ] Falla |
-| 7 | `get` y `list` | Sin sesión | Denegado | Igual | [ ] Pasa  [ ] Falla |
+| 1 | `list` con filtro `usuarioId == A` | A | Permitido | Igual | [x] Pasa  [ ] Falla |
+| 2 | `get` o `list` de documentos con `usuarioId == B` | A | Denegado | Igual | [x] Pasa  [ ] Falla |
+| 3 | `set` de `{A}_matematicas` con `usuarioId: A` | A | Permitido (lo hace la app al abrir Estadísticas) | Igual | [x] Pasa  [ ] Falla |
+| 4 | `set` de `{A}_matematicas` con `usuarioId: B` | A | Denegado | Igual | [x] Pasa  [ ] Falla |
+| 5 | `set` de `{B}_matematicas` (documento de B) con `usuarioId: A` | A | Denegado (no se puede pisar ni tomar el documento de otro) | Permitido (confirmado): la regla solo mira el `usuarioId` del documento nuevo, no el dueño del existente. Falla conocida: la cubre la tarjeta [Sprint 7 - 01] | [ ] Pasa  [x] Falla |
+| 6 | `get` y `list` | C | Permitido | Igual | [x] Pasa  [ ] Falla |
+| 7 | `get` y `list` | Sin sesión | Denegado | Igual | [x] Pasa  [ ] Falla |
 
-La fila 5 es una brecha de las reglas que no figura en la tarjeta 6-36 conocida: si falla como indica "Hoy", registrarla como falla conocida y reportarla para abrir una tarjeta.
+La fila 5 es una brecha de las reglas que no figuraba en la tarjeta 6-36: la cubre la tarjeta [Sprint 7 - 01] (impedir escribir las estadísticas de otro usuario).
 
-- Fecha / Tester / Entorno:
-- Evidencia (captura, resultado del simulador o enlace):
-- Observaciones:
+- Fecha / Tester / Entorno: 2026-10-18 / Claude (implementador del proyecto; ejecución no independiente de QA) / Entorno E (emulador local con `firestore.rules` de `main` 3ac0365); fila 7 también en Entorno R
+- Evidencia (captura, resultado del simulador o enlace): fila 1: permitido. Fila 2: `get` del documento de B y `list` con `usuarioId == B`, ambos `permission-denied`. Fila 3: permitido (con `merge`). Fila 4: `permission-denied`. Fila 5: el `setDoc` de A sobre `{B}_matematicas` con `usuarioId: A` fue permitido y el documento de B quedó con `usuarioId` igual al UID de A. Fila 6: `get` y `list` permitidos. Fila 7: `get` y `list` (con y sin filtro) `permission-denied` (también en `learnfex-dev-oscar`).
+- Observaciones: fila 5: falla conocida, exactamente como indica "Hoy" (se ejecutó la última de la tabla para no contaminar las demás). Debe pasar al cerrar [Sprint 7 - 01].
 
 ---
 
@@ -427,16 +434,16 @@ La fila 5 es una brecha de las reglas que no figura en la tarjeta 6-36 conocida:
 
 | # | Operación | Actor | Esperado (correcto) | Hoy | Resultado |
 | - | --------- | ----- | ------------------- | --- | --------- |
-| 1 | `get` y `list` | C | Permitido | Igual | [ ] Pasa  [ ] Falla |
-| 2 | `get` y `list` | A | Denegado | Igual | [ ] Pasa  [ ] Falla |
-| 3 | `update` y `delete` | A o C | Denegado | Igual | [ ] Pasa  [ ] Falla |
-| 4 | `create` de cualquier documento | A | Denegado (solo debería escribirlo el administrador o el servidor) | Permitido: la regla acepta `create` de cualquier usuario con sesión | [ ] Pasa  [ ] Falla |
+| 1 | `get` y `list` | C | Permitido | Igual | [x] Pasa  [ ] Falla |
+| 2 | `get` y `list` | A | Denegado | Igual | [x] Pasa  [ ] Falla |
+| 3 | `update` y `delete` | A o C | Denegado | Igual | [x] Pasa  [ ] Falla |
+| 4 | `create` de cualquier documento | A | Denegado (solo debería escribirlo el administrador o el servidor) | Permitido (confirmado): la regla acepta `create` de cualquier usuario con sesión. Falla conocida: la cubre la tarjeta [Sprint 7 - 03] | [ ] Pasa  [x] Falla |
 
-La colección no se usa en el código actual (el panel calcula las estadísticas leyendo `usuarios` y `resultados`). La fila 4 es una brecha menor; no hay tarjeta identificada.
+La colección no se usa en el código actual (el panel calcula las estadísticas leyendo `usuarios` y `resultados`). La fila 4 es una brecha menor que cubre la tarjeta [Sprint 7 - 03] (validar la creación de cuestionarios y cerrar `estadisticas_plataforma`).
 
-- Fecha / Tester / Entorno:
-- Evidencia (captura, resultado del simulador o enlace):
-- Observaciones:
+- Fecha / Tester / Entorno: 2026-10-18 / Claude (implementador del proyecto; ejecución no independiente de QA) / Entorno E (emulador local con `firestore.rules` de `main` 3ac0365)
+- Evidencia (captura, resultado del simulador o enlace): fila 1: `get` y `list` de C permitidos. Fila 2: `permission-denied` en ambos. Fila 3: `update` y `delete` de A y de C, los cuatro `permission-denied`. Fila 4: el `create` de A fue permitido.
+- Observaciones: fila 4: falla conocida, exactamente como indica "Hoy". Complemento en `learnfex-dev-oscar` (Entorno R): sin sesión, `get`, `list` y `create` sobre `estadisticas_plataforma` dieron `permission-denied`.
 
 ---
 
@@ -454,10 +461,10 @@ La colección no se usa en el código actual (el panel calcula las estadísticas
 
 **Resultado:**
 
-- Resultado: [ ] Pasa  [ ] Falla  [ ] Bloqueado
-- Fecha / Tester / Entorno:
-- Evidencia (captura, resultado del simulador o enlace):
-- Observaciones:
+- Resultado: [x] Pasa  [ ] Falla  [ ] Bloqueado
+- Fecha / Tester / Entorno: 2026-10-18 / Claude (implementador del proyecto; ejecución no independiente de QA) / Entorno E (emulador local con `firestore.rules` de `main` 3ac0365); Sin sesión también en Entorno R
+- Evidencia (captura, log o enlace): sobre `prueba_qa` con A, con C (administrador) y sin sesión, las cinco operaciones (`get`, `list`, `create`, `update`, `delete`) dieron `permission-denied` (15 de 15). Sin sesión en `learnfex-dev-oscar`: las cinco operaciones sobre `prueba_qa/qa-rbac-*` también `permission-denied`; la colección sigue con 0 documentos.
+- Observaciones: ninguna.
 
 ---
 
@@ -465,7 +472,7 @@ La colección no se usa en el código actual (el panel calcula las estadísticas
 
 La ERS (RF-020) pide que el administrador pueda deshabilitar una cuenta "restringiendo su acceso". En `main` el campo `estado` solo se muestra y se cambia desde `/admin/usuarios`; ni el inicio de sesión, ni las rutas, ni `firestore.rules` lo consultan.
 
-**Estado conocido: esperado a fallar. Sin tarjeta identificada.**
+**Estado conocido: esperado a fallar. Lo cubren las tarjetas [Sprint 7 - 05] [01] (pantalla: no dejar entrar a un inactivo) y [Sprint 7 - 05] [02] (reglas: un inactivo no lee ni escribe datos).**
 
 **Precondiciones:** administrador C y estudiante B de prueba. B tiene sesión abierta en otra ventana.
 
@@ -482,27 +489,55 @@ La ERS (RF-020) pide que el administrador pueda deshabilitar una cuenta "restrin
 
 **Resultado:**
 
-- Resultado: [ ] Pasa  [ ] Falla  [ ] Bloqueado
-- Fecha / Tester / Entorno:
-- Evidencia (captura, log o enlace):
-- Observaciones:
+- Resultado: [ ] Pasa  [x] Falla  [ ] Bloqueado
+- Fecha / Tester / Entorno: 2026-10-18 / Claude (implementador del proyecto; ejecución no independiente de QA) / Entorno E (aplicación de `main` 3ac0365 contra el emulador local; C en el puerto 5312 y B en el 5313)
+- Evidencia (captura, log o enlace): paso 1: tras confirmar ("¿Deseas desactivar la cuenta de qa-rbac-mverz52n B QA?"), la fila mostró "Inactivo" y la lectura REST del emulador devolvió `estado = inactivo`. Paso 2: B recargó y siguió viendo `/inicio` ("¡Hola, qa-rbac-mverz52n B!") y `/practica` con normalidad. No se pudo empezar un cuestionario por pantalla (el área del seed del emulador tiene 0 preguntas); en su lugar, con el SDK, un usuario con `estado: inactivo` (D) hizo `get` de su documento, `list` de `preguntas` y de `ranking`, `create` de un cuestionario y `update` de su `nombre`, todo permitido. Paso 3: B cerró sesión desde Perfil, volvió a iniciar sesión y la aplicación lo llevó a `/inicio`. Paso 4: tras "Activar", `estado = activo`.
+- Observaciones: falla conocida, exactamente como indica "Comportamiento actual conocido"; no se abre un defecto nuevo. Los botones "Desactivar" y "Activar" usan `window.confirm`; el navegador integrado no mostró el diálogo, así que se reemplazó `window.confirm` por una función que devuelve verdadero desde la consola de la página (sin cambios en el código del repositorio).
 
 ---
 
 ## Brechas detectadas al derivar los casos de las reglas
 
-Estas son consecuencia directa del código actual de `firestore.rules` y de la aplicación; no son resultados de ejecución.
+Estas son consecuencia directa del código actual de `firestore.rules` y de la aplicación. La ejecución del 2026-10-18 confirmó las que se indican; ninguna de las confirmadas carece de tarjeta.
 
-1. XP, nivel, `resultados`, `respuestas`, `logrosObtenidos` y `ranking` pueden escribirse desde el cliente (tarjeta 6-36; confirmar que incluya `ranking`).
-2. `estadisticas_progreso`: se puede escribir sobre el documento de otro usuario si el documento nuevo lleva el propio `usuarioId` (caso 15, fila 5).
-3. `preguntas` expone `respuestaCorrecta` a cualquier estudiante (caso 11).
-4. `cuestionarios` y `estadisticas_plataforma` aceptan `create` de cualquier usuario con sesión sin validar contenido (casos 12 y 16).
-5. `estado: inactivo` no restringe el acceso (caso 18).
-6. No hay página 404 (caso 7). El panel de administración no tiene botón de cerrar sesión propio: el administrador solo puede cerrar sesión entrando a `/perfil` (caso 6).
+1. XP, nivel, `resultados`, `respuestas` y `logrosObtenidos`: cerradas por el despliegue de la tarjeta 6-36 (los casos 9.15, 10.5, 13.8 y 13.9 pasan). `ranking` sigue escribible desde el cliente (casos 14.3 y 14.4, confirmado): tarjeta [Sprint 7 - 02].
+2. `estadisticas_progreso`: se puede escribir sobre el documento de otro usuario si el documento nuevo lleva el propio `usuarioId` (caso 15, fila 5, confirmado): tarjeta [Sprint 7 - 01].
+3. `preguntas` expone `respuestaCorrecta` a cualquier estudiante (caso 11, confirmado): tarjeta [Sprint 7 - 04].
+4. `cuestionarios` y `estadisticas_plataforma` aceptan `create` de cualquier usuario con sesión sin validar contenido (casos 12 y 16, confirmado): tarjeta [Sprint 7 - 03].
+5. `estado: inactivo` no restringe el acceso (caso 18, confirmado): tarjetas [Sprint 7 - 05] [01] y [02].
+6. No hay página 404 (caso 7, confirmado; sin tarjeta identificada). El administrador no está separado de las pantallas del estudiante (caso 6, comportamiento actual, a confirmar con la especificación) y puede quitarse a sí mismo el rol de administrador sin aviso (caso 8, paso 6, confirmado; sin tarjeta identificada). El botón de cerrar sesión del panel de administración ya existe (se corrigió el texto anterior que decía lo contrario).
 
 ## Notas finales
 
 - Ejecutar los casos de rutas con `npm run dev` y la consola del navegador abierta.
 - Los casos de datos se pueden ejecutar todos en el simulador de reglas; los que dicen "en la app" se pueden comprobar también desde la interfaz.
-- Las filas "esperado a fallar hasta la tarjeta 6-36" deben pasar cuando se cierre la tarjeta [Sprint 6 - 36] Reglas de Firestore. Volver a ejecutarlas entonces.
+- Las filas que antes decían "esperado a fallar hasta la tarjeta 6-36" (9.15, 10.5, 13.8 y 13.9) pasan desde el despliegue de [Sprint 6 - 36]. Las filas con falla conocida que quedan (14.3, 14.4, 15.5, 16.4 y el caso 18) deben pasar cuando se cierren las tarjetas de Sprint 7 indicadas; volver a ejecutarlas entonces.
 - Documentos relacionados en `docs/qa/`: `casos-prueba-gamificacion.md` (manipulación de XP, nivel y logros) y `integracion-end-to-end.md` (recorrido completo de estudiante y administrador).
+
+## Resumen de ejecución
+
+Ejecución del 2026-10-18, 72 verificaciones (8 casos de rutas, 62 filas de las tablas de los casos 9 a 16, el caso 17 y el caso 18):
+
+| Resultado | Cantidad |
+| --------- | -------- |
+| Pasa | 67 |
+| Falla | 5 |
+| No ejecutado / Bloqueado | 0 |
+
+Fallas (todas conocidas; ninguna es un defecto nuevo):
+
+| Caso | Qué falla | Error observado | Tarjeta |
+| ---- | --------- | --------------- | ------- |
+| 14, fila 3 | A escribe `ranking/{A}` con `puntajeAcumulado: 999999` | permitido (se leyó `999999`) | [Sprint 7 - 02] |
+| 14, fila 4 | A borra `ranking/{A}` | permitido | [Sprint 7 - 02] |
+| 15, fila 5 | A escribe el documento `{B}_matematicas` con `usuarioId: A` | permitido; el documento de B quedó a nombre de A | [Sprint 7 - 01] |
+| 16, fila 4 | A crea un documento en `estadisticas_plataforma` | permitido | [Sprint 7 - 03] |
+| 18 | Un usuario `inactivo` inicia sesión y usa la aplicación y los datos | sin restricción en pantalla ni en reglas | [Sprint 7 - 05] [01] y [02] |
+
+Observaciones que no cambian ninguna fila: `preguntas` expone `respuestaCorrecta` y `explicacion` a un estudiante (caso 11, tarjeta [Sprint 7 - 04]); `cuestionarios` acepta contenido arbitrario de 20 KB (caso 12, tarjeta [Sprint 7 - 03]).
+
+Brechas nuevas no cubiertas por ninguna tarjeta: ninguna de las reglas de Firestore. Siguen sin tarjeta identificada las brechas menores de producto ya anotadas: no hay página 404 (caso 7), el administrador no está separado de las pantallas del estudiante (caso 6) y puede quitarse a sí mismo el rol sin aviso (caso 8, paso 6).
+
+Textos obsoletos corregidos: las columnas "Hoy" y las notas "esperado a fallar hasta la tarjeta 6-36" de los casos 9.15, 10.5, 13.8 y 13.9 (las reglas ya están desplegadas y esos casos pasan); el resumen de reglas de usuarios, logros y resultados; la afirmación de que el panel de administración no tiene botón de cerrar sesión (casos 6 y brechas); el paso 3 del caso 8 (escribir la URL recarga la página); el commit verificado y el estado del documento.
+
+Limitaciones de esta ejecución: lo que requiere sesión se ejecutó en el emulador local y no en `learnfex-dev-oscar` (ver "Datos de la ejecución"); el emulador no exige el índice compuesto del caso 13, fila 4; no se hizo clic en cada enlace de la navegación del caso 4; la comprobación por pantalla de los CRUD del caso 11 no se ejecutó (se hicieron las operaciones equivalentes con el SDK); el texto transitorio "Verificando sesión..." no se observó.
