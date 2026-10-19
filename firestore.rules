@@ -1,14 +1,32 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function estaAutenticado() {
+    // Hay una sesion de Firebase Auth (sin mirar el perfil en Firestore).
+    function haySesion() {
       return request.auth != null;
+    }
+
+    // El usuario NO esta desactivado. Un perfil que todavia no existe cuenta como activo
+    // (en el registro, Auth crea la cuenta antes que createUserProfile cree usuarios/{uid}),
+    // y un perfil sin campo `estado` tambien. Solo `estado == 'inactivo'` bloquea.
+    // Costo: exists() + get() del mismo documento usuarios/{uid}; Firestore los cobra como
+    // UNA lectura por solicitud aunque la regla lo mencione varias veces.
+    function estaActivo() {
+      return !exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) ||
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.get('estado', 'activo') != 'inactivo';
+    }
+
+    // Sesion valida Y cuenta no desactivada. Es la puerta de casi todas las reglas.
+    function estaAutenticado() {
+      return haySesion() && estaActivo();
     }
 
     function esPropioUsuario(usuarioId) {
       return estaAutenticado() && request.auth.uid == usuarioId;
     }
 
+    // Un administrador desactivado deja de serlo (pasa por estaAutenticado()). Un
+    // administrador activo no cambia: sigue leyendo usuarios/{uid}.data.rol como antes.
     function esAdministrador() {
       return estaAutenticado() &&
         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'administrador';
@@ -45,7 +63,10 @@ service cloud.firestore {
     }
 
     match /usuarios/{usuarioId} {
-      allow read: if esPropioUsuario(usuarioId) || esAdministrador();
+      // Excepcion deliberada: el propietario lee su perfil AUNQUE este inactivo (solo haySesion, sin
+      // estaActivo), porque AuthContext lo lee para descubrir que esta inactivo y cerrarle la sesion.
+      // Es lo unico que un inactivo puede hacer; ademas no suma lecturas de reglas.
+      allow read: if (haySesion() && request.auth.uid == usuarioId) || esAdministrador();
 
       allow create: if esPropioUsuario(usuarioId) &&
         request.resource.data.rol == 'estudiante' &&
