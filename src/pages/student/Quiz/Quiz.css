@@ -390,6 +390,7 @@
     width: calc(100% - 24px);
 
     padding-top: var(--space-lg);
+    padding-bottom: 80px;
   }
 
   .navigation-header {
@@ -410,13 +411,20 @@
     align-items: center;
     gap: var(--space-xs);
 
-    margin: var(--space-sm) auto 0;
+    position: fixed;
+    bottom: calc(var(--space-sm) + env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+
+    margin: 0;
     padding: var(--space-xs) var(--space-sm);
 
     border: 1px solid var(--color-error-border);
     border-radius: var(--radius-sm);
 
-    background: var(--color-error-bg);
+    background: var(--color-surface-nav);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
 
     color: var(--color-error);
 
