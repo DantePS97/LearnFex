@@ -11,6 +11,8 @@ Este documento valida que el control de acceso de LearnFex funcione en dos nivel
 
 ## Cómo funciona hoy (resumen verificado en el código)
 
+> Nota del 2026-10-19: este resumen describe el código de `main` `3ac0365`, el de la ejecución del 2026-10-18, y se conserva tal cual porque explica los resultados registrados más abajo. Desde entonces cambiaron las reglas y varias pantallas (ruta `/privacidad` y página 404, consentimiento en el registro, bloqueo de cuentas inactivas, `ranking` y `estadisticas_progreso` cerradas, forma validada de `cuestionarios`, el administrador sin poder cambiar su propio rol). El detalle está en la sección "Actualización posterior (2026-10-19)" al final, y el comportamiento vigente de las reglas, en la sección 4 de `docs/manual-tecnico.md`.
+
 Rutas (`src/routes/AppRoutes.jsx`):
 
 - Públicas: `/` (inicio de sesión), `/registro`, `/recuperar-contrasena`.
@@ -35,6 +37,8 @@ Datos (`firestore.rules`), resumen:
 - Cualquier otra colección: denegado para todos.
 
 ## Hallazgo de seguridad vigente
+
+> Nota del 2026-10-19: este hallazgo describe el estado en la fecha de la ejecución (2026-10-18). Las brechas de Sprint 7 que menciona (`ranking`, `estadisticas_progreso`, `cuestionarios`, `estadisticas_plataforma` y usuarios inactivos) ya tienen corrección en `main`; sigue abierta la de `preguntas` ([Sprint 7 - 04]). Ver "Actualización posterior (2026-10-19)" al final. Esas filas no se volvieron a ejecutar.
 
 Las reglas de la tarjeta de Notion **[Sprint 6 - 36] Reglas de Firestore** ya están desplegadas en `learnfex-dev-oscar` (release del 2026-10-15 19:02 UTC, idénticas a `firestore.rules` de `main`): un estudiante ya no puede subir su propio XP y nivel ni crear `resultados`, `respuestas` ni `logrosObtenidos` desde el cliente. Los casos 9.15, 10.5, 13.8 y 13.9 pasan desde ese despliegue.
 
@@ -541,3 +545,50 @@ Brechas nuevas no cubiertas por ninguna tarjeta: ninguna de las reglas de Firest
 Textos obsoletos corregidos: las columnas "Hoy" y las notas "esperado a fallar hasta la tarjeta 6-36" de los casos 9.15, 10.5, 13.8 y 13.9 (las reglas ya están desplegadas y esos casos pasan); el resumen de reglas de usuarios, logros y resultados; la afirmación de que el panel de administración no tiene botón de cerrar sesión (casos 6 y brechas); el paso 3 del caso 8 (escribir la URL recarga la página); el commit verificado y el estado del documento.
 
 Limitaciones de esta ejecución: lo que requiere sesión se ejecutó en el emulador local y no en `learnfex-dev-oscar` (ver "Datos de la ejecución"); el emulador no exige el índice compuesto del caso 13, fila 4; no se hizo clic en cada enlace de la navegación del caso 4; la comprobación por pantalla de los CRUD del caso 11 no se ejecutó (se hicieron las operaciones equivalentes con el SDK); el texto transitorio "Verificando sesión..." no se observó.
+
+---
+
+## Actualización posterior (2026-10-19)
+
+Esta sección se agregó después de la ejecución del 2026-10-18 y no cambia ninguno de los resultados registrados arriba. **Las filas que figuran como Falla (14.3, 14.4, 15.5, 16.4 y el caso 18) NO se volvieron a ejecutar y siguen figurando como Falla hasta que alguien las re-ejecute.** Aquí solo se anota qué corrección ya está mergeada en `main` y qué conviene agregar a la próxima ejecución. Verificado contra `main` `99a359d`.
+
+### Casos fallidos con corrección mergeada y desplegada
+
+Las correcciones están mergeadas en `main` (PR #93, #101 y #108). Según informó el equipo, también están desplegadas; ese dato no se puede comprobar desde el repositorio y no se verificó.
+
+| Caso / fila | Qué fallaba (2026-10-18) | Corrección en `main` | Dónde se ve en el código |
+| ----------- | ------------------------ | -------------------- | ------------------------ |
+| 14.3 y 14.4 | A escribía y borraba `ranking/{A}` | `ranking` con `allow write: if false`: solo escribe la función (PR #93, commit `0ee25a9`) | `firestore.rules:130-134` |
+| 15.5 | A pisaba el documento `{B}_matematicas` | `estadisticas_progreso` exige que el ID empiece por el UID de quien escribe (PR #93, commit `f96820d`) | `firestore.rules:136-147` |
+| 16.4 | A creaba documentos en `estadisticas_plataforma` | `estadisticas_plataforma` con `allow write: if false` (PR #93, commit `bec7a57`) | `firestore.rules:154-158` |
+| 18 | Una cuenta `inactivo` seguía usando la aplicación y los datos | Cliente: cierra la sesión y avisa (PR #101, commit `4c58469`). Reglas: lista blanca `estaActivo()` (PR #108, commits `a475330` y `ca6d868`) | `src/context/AuthContext.jsx:22-28`, `src/pages/auth/Login/Login.jsx:53-57`, `firestore.rules:16-24` |
+
+Sigue abierto y no cambió: `preguntas` expone `respuestaCorrecta` y `explicacion` (observación del caso 11, tarjeta [Sprint 7 - 04], pendiente de decisión). Del caso 18, además, siguen sin tratarse la función `calificarPrueba` (acepta pruebas de una cuenta inactiva) y la cuenta de Authentication (no se deshabilita); ver la sección 12 de `docs/manual-tecnico.md`.
+
+### Otras afirmaciones de este documento que ya no describen el código
+
+Estas filas están registradas como Pasa o como brecha en su momento. No se tocaron; se anotan aquí para que quien re-ejecute sepa qué esperar.
+
+| Dónde | Lo que dice el registro | Qué hace el código hoy |
+| ----- | ----------------------- | ---------------------- |
+| Caso 7 | Una URL inexistente deja la pantalla en blanco, sin 404 | Muestra la página "Página no encontrada" con el enlace "Volver al inicio" (PR #105; `src/routes/AppRoutes.jsx:89`, `src/pages/NotFound/NotFound.jsx`) |
+| Caso 8, paso 6 y brecha 6 | C cambia su propio rol a Estudiante sin aviso | La fila propia tiene el selector y el botón de estado deshabilitados y `handleRol` muestra "No podés cambiar tu propio rol..." (PR #106; `src/pages/admin/Users/Users.jsx:120-124`). Las reglas también lo niegan (PR #108; `firestore.rules:84`) |
+| Caso 9, fila 10 | `create` de `usuarios/{uidNuevo}` con `rol`, `estado`, `xp` y `nivel` válidos queda permitido | Además exige `consentimientoDatos == true` y `fechaConsentimiento == request.time` (PR #87; `firestore.rules:73-79`); sin esos campos se deniega |
+| Caso 9, fila 9 | C actualiza `rol` y `estado` de B (permitido) | Sigue permitido sobre documentos ajenos. Sobre su propio documento, C solo puede cambiar `nombre`, `apellido` y `colegio` |
+| Caso 12, fila 3 y observación | A crea un cuestionario con 20 KB de texto y `preguntas` que no es una lista, y el `create` se permite | `create` solo se permite con la forma de `esCuestionarioValido` (título de hasta 120 caracteres, `preguntas` lista de 1 a 100 elementos, `estado: activo`, `fechaCreacion == request.time`; `firestore.rules:50-65` y `106-110`). Sigue sin límite de cantidad |
+| Rutas públicas ("Cómo funciona hoy") | `/`, `/registro`, `/recuperar-contrasena` | Se suma `/privacidad`, también pública (`src/routes/AppRoutes.jsx:45`) |
+| "Brechas detectadas al derivar los casos de las reglas", puntos 1 a 6 | Seis brechas abiertas o confirmadas | Corregidas en `main`: `ranking` (1), `estadisticas_progreso` (2), la forma de `cuestionarios` y `estadisticas_plataforma` (4, sin límite de cantidad de cuestionarios), usuarios inactivos en cliente y reglas (5), página 404 y autoprotección del administrador (6). Siguen abiertas: `preguntas` expone `respuestaCorrecta` (3) y el administrador sigue sin estar separado de las pantallas del estudiante (6, a confirmar con la especificación) |
+| Perfil cargado una sola vez (caso 8, paso 3) | El rol se carga una sola vez | Además se vuelve a leer el perfil al abrir una pantalla de resultados (`refreshProfile`, PR #97); el paso 3 sigue siendo válido porque no pasa por Resultados |
+
+### Casos nuevos que conviene agregar a la próxima ejecución
+
+1. Estado inválido (lista blanca): como C, poner `estado` de B en `"Inactivo"`, `"suspendido"`, `""` y `null`, y comprobar que B queda bloqueado en las reglas (todo `permission-denied` salvo leer su propio `usuarios/{B}`) y que el cliente solo cierra la sesión con el valor exacto `"inactivo"`. Comprobar también que un usuario sin campo `estado` y uno sin documento en `usuarios` cuentan como activos.
+2. Usuario inactivo en detalle: con `estado: "inactivo"`, `get` de su propio documento permitido; `get` y `list` de `areas`, `preguntas`, `ranking`, `cuestionarios` y `resultados`, `create` de cuestionario y `update` de su perfil, todos denegados. Un administrador inactivo no puede leer `usuarios/{otro}` ni escribir catálogos.
+3. Administrador sobre su propio documento: `update` de `rol` o `estado` en `usuarios/{C}` denegado; `update` de `nombre`, `apellido` o `colegio` permitido; sobre `usuarios/{B}` permitido. Desde la pantalla Usuarios, la fila propia debe verse con el selector y el botón deshabilitados.
+4. Consentimiento obligatorio: `create` de `usuarios/{uidNuevo}` sin `consentimientoDatos`, con `consentimientoDatos: false`, sin `fechaConsentimiento` y con una fecha enviada por el cliente (no el tiempo del servidor): todos denegados; con `true` y `serverTimestamp()`, permitido. En la pantalla: registrarse sin marcar la casilla muestra el aviso y no crea la cuenta ni el perfil; marcándola, el perfil queda con ambos campos.
+5. Página 404 y política: `/ruta-que-no-existe` y `/home`, con y sin sesión, muestran "Página no encontrada"; `/privacidad` se abre sin sesión.
+6. Forma de `cuestionarios`: `create` con una clave extra, con `estado: "inactivo"`, con `fechaCreacion` enviada por el cliente, con `preguntas` vacía o de más de 100 elementos y con el primer elemento sin `preguntaId`: todos denegados; con la forma que arma `createQuiz`, permitido.
+7. `estadisticas_progreso`: `set` de un ID que no empieza por el UID del actor y `set` de `{A}_matematicas` con `usuarioId: B`, denegados; `{A}_ingles` con `usuarioId: A`, permitido. Un administrador solo puede escribir los suyos.
+8. `ranking` y `estadisticas_plataforma`: `write` denegado también para el administrador; lectura de `ranking` permitida a cualquier cuenta activa.
+9. Funcionales relacionados (ver `casos-prueba-simulacros.md` y `casos-prueba-gamificacion.md`): iniciar el simulacro desde Práctica, aviso "¡Logro desbloqueado!", confirmar al finalizar con preguntas sin responder y "Reintentar" tras un fallo de envío.
+10. Cuenta desactivada y `calificarPrueba` (brecha conocida): la función acepta la prueba de una cuenta inactiva; ver el caso 21 de `casos-prueba-gamificacion.md`.

@@ -56,7 +56,7 @@ Después hay que crear el archivo de variables de entorno (ver la sección sigui
 
 ## Variables de entorno
 
-El cliente lee su configuración de Firebase desde variables `VITE_*`. Se definen en un archivo `.env.local` en la raíz del repositorio. Ese archivo no se versiona: el `.gitignore` ignora `.env` y cualquier archivo `*.local`.
+El cliente lee su configuración de Firebase desde variables `VITE_*`. Se definen en un archivo `.env.local` en la raíz del repositorio. Ese archivo no se versiona: el `.gitignore` ignora `.env`, `.env.production`, `.env.development`, `.env.test` y cualquier archivo `*.local`.
 
 | Variable | Para qué sirve | Obligatoria | Secreta | Quién la lee |
 | -------- | -------------- | ----------- | ------- | ------------ |
@@ -78,7 +78,7 @@ Puntos que conviene tener claros:
 - Las variables `VITE_*` se inyectan en tiempo de build, no en tiempo de ejecución. En un hosting hay que definirlas antes de construir; si se cambian después, hay que volver a construir y publicar.
 - `VITE_USE_EMULATORS` no debe ser `true` en producción: el cliente intentaría conectarse a `127.0.0.1`.
 - La carpeta `functions/` no usa variables de entorno propias.
-- El repositorio no incluye un archivo `.env.example`. El bloque listo para copiar está en [`docs/variables-de-entorno.md`](docs/variables-de-entorno.md), junto con el detalle de cada variable.
+- El repositorio incluye un archivo `.env.example`, versionado, como plantilla con valores de ejemplo (nunca poner valores reales ahí). El bloque listo para copiar a `.env.local` y el detalle de cada variable están en [`docs/variables-de-entorno.md`](docs/variables-de-entorno.md).
 
 ## Scripts disponibles
 
@@ -170,7 +170,7 @@ Advertencia: sin `SEED_USE_EMULATORS=true`, el script escribe en el proyecto de 
 ├── scripts/
 │   └── seed-preguntas.js     Carga de áreas, preguntas y logros
 ├── src/
-│   ├── pages/                Pantallas (auth, student, admin)
+│   ├── pages/                Pantallas (auth, student, admin, legal y la página 404)
 │   ├── components/           Componentes reutilizables (Button, Card, Input, Navbar, ...)
 │   ├── layouts/              Estructuras de pantalla (StudentLayout, AdminLayout)
 │   ├── routes/               Rutas y guardas (PrivateRoutes, AdminRoute)
@@ -179,6 +179,8 @@ Advertencia: sin `SEED_USE_EMULATORS=true`, el script escribe en el proyecto de 
 │   ├── config/firebase.js    Inicialización del SDK de Firebase
 │   ├── context/, hooks/      Estado de sesión (AuthContext) y hooks (useAuth, useTimer)
 │   └── styles/               Variables, reset y estilos globales
+├── .env.example              Plantilla de variables de entorno (valores de ejemplo)
+├── .firebaserc               Proyecto de Firebase por defecto (learnfex-dev-oscar)
 ├── firebase.json             Configuración de Firebase y de los emuladores
 ├── firestore.rules           Reglas de seguridad de Firestore
 ├── firestore.indexes.json    Índices compuestos de Firestore
@@ -212,7 +214,7 @@ El cliente de React no tiene pruebas automatizadas. La verificación funcional s
 El Plan de Proyecto define que el frontend se publica en Vercel y que el backend vive en Firebase. Resumen:
 
 - Frontend: Vercel construye con `npm run build` y publica `dist/`. El archivo `vercel.json` reescribe todas las rutas a `index.html` para que las rutas de React Router funcionen al recargar o abrir un enlace directo. Las variables `VITE_*` deben estar definidas en Vercel antes de construir.
-- Backend: se despliega con Firebase CLI y siempre con `--project`. El orden es obligatorio: primero la función, después el cliente nuevo y por último las reglas.
+- Backend: se despliega con Firebase CLI y siempre con `--project`. El archivo `.firebaserc` solo define como proyecto por defecto el de desarrollo del equipo (`learnfex-dev-oscar`), así que un comando sin `--project` apuntaría ahí. El orden es obligatorio: primero la función, después el cliente nuevo y por último las reglas.
 
 El procedimiento completo, con los comandos y el motivo del orden, está en el manual técnico.
 
