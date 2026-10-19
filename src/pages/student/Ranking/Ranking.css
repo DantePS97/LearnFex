@@ -168,7 +168,7 @@
 
 .ranking-row {
 	display: grid;
-	grid-template-columns: 70px 1fr 150px 100px 130px;
+	grid-template-columns: 70px 1fr 150px 130px;
 	align-items: center;
 	min-height: 70px;
 	padding: 0 var(--space-lg);
@@ -329,16 +329,11 @@
 	}
 
 	.ranking-row {
-		grid-template-columns: 50px 1fr 100px;
+		grid-template-columns: 50px 1fr 80px 100px;
 		padding: var(--space-sm) var(--space-md);
 	}
 
 	.ranking-row-title {
-		display: none;
-	}
-
-	.ranking-row > div:nth-child(3),
-	.ranking-row > div:nth-child(4) {
 		display: none;
 	}
 
@@ -363,6 +358,10 @@
 	.ranking-row {
 		grid-template-columns: 40px 1fr 90px;
 		gap: 6px;
+	}
+
+	.ranking-row > div:nth-child(3) {
+		display: none;
 	}
 
 	.ranking-avatar {
