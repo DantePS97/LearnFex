@@ -19,6 +19,13 @@ export default defineConfig([
     },
   },
   {
+    // Los scripts de scripts/ son herramientas de Node (usan process, fetch, etc.), no codigo del navegador.
+    files: ['scripts/**/*.js'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
+  {
     // Cloud Functions run on Node.js and use CommonJS (require/module.exports).
     files: ['functions/**/*.js'],
     languageOptions: {
