@@ -13,18 +13,23 @@
 //   2) Proyecto real (`--real`): NO crea cuentas ni toca Auth. Recibe los correos de estudiantes
 //      ya registrados a mano, resuelve sus uid y escribe SOLO el historial (resultados,
 //      respuestas, ranking, logros, estadísticas y xp/nivel), replicando exactamente lo que
-//      escribe la función. Todo lo demo lleva `esDemo: true` para poder borrarlo con --reset.
+//      escribe la función. Cuestionarios, resultados, respuestas, ranking, logros obtenidos y
+//      estadísticas llevan `esDemo: true` para poder borrarlos con --reset.
 //      Accede por la API REST de Firestore con el token de la variable DEMO_ACCESS_TOKEN.
 //
 // Opciones:
-//   --reset            Borra solo lo demo y lo vuelve a crear (con --real: solo borra, salvo que
+//   --reset            Borra lo demo y lo vuelve a crear (con --real: solo borra, salvo que
 //                      se pasen --emails).
 //   --borrar           Solo borra lo demo, no lo recrea.
 //   --real             Modo proyecto real (ver arriba).
-//   --emails a@x,b@x   (con --real) Correos de estudiantes ya registrados. En orden reciben los
-//                      perfiles: fuerte, medio, flojo. Del cuarto en adelante quedan sin pruebas.
+//   --emails a@x,b@x   (con --real) Correos de estudiantes ya registrados, tal cual se registraron
+//                      (se respetan mayúsculas), sin repetir. En orden reciben los perfiles: fuerte,
+//                      medio, flojo. Del cuarto en adelante quedan sin pruebas. Se validan todos
+//                      antes de escribir o borrar nada.
 //   --dry-run          (con --real) Imprime qué escribiría, sin escribir.
-//   --yes              (con --real) No pide confirmar el id del proyecto.
+//   --yes              (con --real, solo al escribir) Omite la confirmación del id del proyecto, que es
+//                      la única barrera antes de escribir: usalo con cuidado. No se admite junto con
+//                      --reset ni --borrar.
 //   --solo-base        (emulador) Crea cuentas, perfiles y banco, pero ningún historial.
 //   --directo          (emulador) Escribe el historial por REST, sin llamar a la función
 //                      (mismo camino que --real; sirve para compararlos).
@@ -34,7 +39,8 @@
 // es DEMO_ACCESS_TOKEN (variable de entorno, solo modo --real).
 //
 // Variables de entorno: DEMO_ACCESS_TOKEN, DEMO_PROJECT_ID (si falta, projects.default de
-// .firebaserc), DEMO_QUOTA_PROJECT (opcional), DEMO_AUTH_EMULATOR_HOST,
+// .firebaserc; con --real, si se define, debe coincidir con el de .firebaserc), DEMO_QUOTA_PROJECT
+// (opcional), DEMO_AUTH_EMULATOR_HOST,
 // DEMO_FIRESTORE_EMULATOR_HOST y DEMO_FUNCTIONS_EMULATOR_HOST (hosts locales; con --real,
 // DEMO_FIRESTORE_EMULATOR_HOST hace que todo el flujo corra contra el emulador).
 
@@ -60,7 +66,7 @@ const PATRON_HOST_LOCAL = /^(127\.0\.0\.1|localhost|\[::1\]):\d+$/;
 // Puertos de firebase.json. Se pueden cambiar con DEMO_AUTH_EMULATOR_HOST, DEMO_FIRESTORE_EMULATOR_HOST
 // y DEMO_FUNCTIONS_EMULATOR_HOST (solo hosts locales) si los puertos estándar están ocupados.
 const hostLocal = (variable, porDefecto) => {
-	const host = process.env[variable] ?? porDefecto;
+	const host = process.env[variable] || porDefecto;
 
 	if (!PATRON_HOST_LOCAL.test(host)) {
 		console.error(`
@@ -299,7 +305,8 @@ const leerArgumentos = (argv) => {
 				fallar("--emails necesita una lista de correos separados por coma.");
 			}
 
-			correos = valor.split(",").map((correo) => correo.trim().toLowerCase()).filter(Boolean);
+			// Los correos se conservan tal cual: userRepository guarda el correo como se escribió al registrarse.
+			correos = valor.split(",").map((correo) => correo.trim()).filter(Boolean);
 		} else {
 			opciones[nombre.slice(2)] = true;
 		}
@@ -414,8 +421,14 @@ const crearFirestore = ({ proyecto, emuladorHost = null, token, dryRun = false }
 
 		const fields = aCampos(operacion.datos);
 
+		// merge solo actualiza documentos que ya existen: sin la precondición, un merge sobre un
+		// documento borrado (por ejemplo un perfil) crearía uno fantasma con solo esos campos.
 		if (operacion.tipo === "merge") {
-			return { update: { name, fields }, updateMask: { fieldPaths: Object.keys(operacion.datos) } };
+			return {
+				update: { name, fields },
+				updateMask: { fieldPaths: Object.keys(operacion.datos) },
+				currentDocument: { exists: true },
+			};
 		}
 
 		return { update: { name, fields } };
@@ -455,6 +468,22 @@ const crearFirestore = ({ proyecto, emuladorHost = null, token, dryRun = false }
 				cuerpo: {
 					structuredQuery: {
 						from: [{ collectionId: coleccion }],
+						where: { fieldFilter: { field: { fieldPath: campo }, op: "EQUAL", value: aValor(valor) } },
+					},
+				},
+			});
+
+			return (respuesta ?? []).filter((fila) => fila.document).map((fila) => deDocumento(fila.document));
+		},
+
+		// Igualdad sobre TODAS las colecciones con ese id (consulta de grupo de colecciones). En Firestore
+		// real exige un índice de grupo de colecciones para el campo; si falta, lanza error.
+		async consultarGrupo({ coleccion, campo, valor }) {
+			const respuesta = await http("POST", `${raiz}:runQuery`, {
+				token,
+				cuerpo: {
+					structuredQuery: {
+						from: [{ collectionId: coleccion, allDescendants: true }],
 						where: { fieldFilter: { field: { fieldPath: campo }, op: "EQUAL", value: aValor(valor) } },
 					},
 				},
@@ -783,7 +812,8 @@ const operacionesDePrueba = (uid, prueba) => {
 		...prueba.respuestas.map((respuesta, i) => ({
 			tipo: "set",
 			ruta: `${rutaResultado}/respuestas/r${dosDigitos(i + 1)}`,
-			datos: { ...respuesta, usuarioId: uid },
+			// esDemo permite encontrar (y borrar) respuestas huérfanas si falta el resultado padre.
+			datos: { ...respuesta, usuarioId: uid, esDemo: true },
 		})),
 	];
 };
@@ -828,81 +858,132 @@ const operacionesDeEstadisticas = (uid, pruebas, areas) =>
 // Borrado de lo demo
 // ---------------------------------------------------------------------------
 
-// Borra solo lo demo. En el emulador también borra el banco y las cuentas de Auth que cargó este
-// script; con `modoReal` jamás toca áreas, preguntas, logros, configuración, usuarios ni Auth: solo
-// los documentos marcados con esDemo y, de los usuarios, devuelve xp/nivel a 0/1 si no tienen
-// actividad propia fuera de lo demo.
+/// Borra lo demo. En el emulador también borra el banco y las cuentas de Auth que cargó este script;
+// con `modoReal` jamás toca áreas, preguntas, logros, configuración, usuarios ni Auth.
+//
+// Qué se borra: los documentos marcados con esDemo y, de cada estudiante que tuvo datos demo, su
+// ranking, sus logros obtenidos y sus estadísticas de progreso (se identifican por uid, no por la
+// marca: esos documentos pueden haber sido reescritos por la aplicación). A esos estudiantes se les
+// devuelve xp/nivel a 0/1, salvo que tengan pruebas reales fuera de lo demo: en ese caso solo se
+// borran sus resultados demo y se conservan xp, ranking, logros y estadísticas.
+//
+// El orden de los commits es deliberado para que un corte a mitad de camino se pueda reparar
+// volviendo a correr el reset: primero xp, logros, ranking y estadísticas, después respuestas y
+// resultados, y al final los cuestionarios. Los uid a limpiar se descubren por cualquier marca que
+// siga existiendo (resultados, ranking, estadísticas o logros con esDemo), así que mientras quede
+// algo marcado, el reset lo encuentra.
 const borrarDemo = async (fs, { modoReal }) => {
 	log("Borrando datos demo...");
 
 	const conteo = new Map();
 	const sumar = (coleccion, cantidad = 1) => conteo.set(coleccion, (conteo.get(coleccion) ?? 0) + cantidad);
-	const operaciones = [];
-	const borrar = (ruta) => {
-		operaciones.push({ tipo: "delete", ruta });
-		sumar(ruta.split("/").filter((_, i) => i % 2 === 0).join("/"));
+	const nombreColeccion = (ruta) => ruta.split("/").filter((_, i) => i % 2 === 0).join("/");
+	const etapas = { estado: [], respuestasYResultados: [], cuestionarios: [], usuariosYCatalogo: [] };
+	const borrar = (etapa, ruta) => {
+		etapas[etapa].push({ tipo: "delete", ruta });
+		sumar(nombreColeccion(ruta));
 	};
 
-	const resultadosDemo = await fs.consultar({ coleccion: "resultados", campo: "esDemo", valor: true });
-	const usuariosDemo = modoReal ? [] : await fs.consultar({ coleccion: "usuarios", campo: "esDemo", valor: true });
-	const uids = new Set([...resultadosDemo.map((resultado) => resultado.usuarioId), ...usuariosDemo.map((usuario) => usuario.id)]);
+	// Consultas de grupo (requieren índice de grupo de colecciones en Firestore real): si fallan, se avisa
+	// y se sigue; las respuestas y los logros se encuentran igual a partir de sus resultados y de cada uid.
+	const consultarGrupoOAvisar = async (consulta) => {
+		try {
+			return await fs.consultarGrupo(consulta);
+		} catch (error) {
+			log(`  ! No se pudo buscar ${consulta.coleccion} marcadas (falta un índice de grupo de colecciones?): ${error.message}`);
+
+			return [];
+		}
+	};
+
+	const [resultadosDemo, rankingDemo, estadisticasDemo, logrosDemo, respuestasDemo, usuariosDemo] = await Promise.all([
+		fs.consultar({ coleccion: "resultados", campo: "esDemo", valor: true }),
+		fs.consultar({ coleccion: "ranking", campo: "esDemo", valor: true }),
+		fs.consultar({ coleccion: "estadisticas_progreso", campo: "esDemo", valor: true }),
+		consultarGrupoOAvisar({ coleccion: "logrosObtenidos", campo: "esDemo", valor: true }),
+		consultarGrupoOAvisar({ coleccion: "respuestas", campo: "esDemo", valor: true }),
+		modoReal ? [] : fs.consultar({ coleccion: "usuarios", campo: "esDemo", valor: true }),
+	]);
+
+	const uids = new Set([
+		...resultadosDemo.map((resultado) => resultado.usuarioId),
+		...rankingDemo.map((ranking) => ranking.id),
+		...estadisticasDemo.map((estadistica) => estadistica.usuarioId),
+		...logrosDemo.map((logro) => logro.ruta.split("/")[1]),
+		...usuariosDemo.map((usuario) => usuario.id),
+	]);
+
+	uids.delete(undefined);
+
+	const rutasRespuestas = new Set();
+	const rutasResultados = new Set();
 	const cuestionariosABorrar = new Set();
 	const usuariosAReiniciar = [];
 
 	for (const uid of uids) {
 		const resultados = await fs.consultar({ coleccion: "resultados", campo: "usuarioId", valor: uid });
-		// En modo real solo se borra lo marcado; en el emulador también la actividad que los
+		// En modo real solo se borran los resultados marcados; en el emulador también la actividad que los
 		// estudiantes demo generaron durante la presentación.
 		const aBorrar = modoReal ? resultados.filter((resultado) => resultado.esDemo === true) : resultados;
 		const actividadPropia = resultados.some((resultado) => resultado.esDemo !== true);
 
 		for (const resultado of aBorrar) {
-			const respuestas = await fs.listar(`${resultado.ruta}/respuestas`);
-
-			respuestas.forEach((respuesta) => borrar(respuesta.ruta));
-			borrar(resultado.ruta);
+			(await fs.listar(`${resultado.ruta}/respuestas`)).forEach((respuesta) => rutasRespuestas.add(respuesta.ruta));
+			rutasResultados.add(resultado.ruta);
 			cuestionariosABorrar.add(resultado.cuestionarioId);
 		}
 
 		if (modoReal && actividadPropia) {
-			log(`  ! ${uid}: tiene pruebas reales además de las demo; se conservan su xp, ranking y logros.`);
+			log(`  ! ${uid}: tiene pruebas reales además de las demo; se conservan su xp, ranking, logros y estadísticas.`);
 			continue;
 		}
 
-		const logros = await fs.listar(`usuarios/${uid}/logrosObtenidos`);
+		(await fs.listar(`usuarios/${uid}/logrosObtenidos`)).forEach((logro) => borrar("estado", logro.ruta));
 
-		logros.forEach((logro) => borrar(logro.ruta));
-		borrar(`ranking/${uid}`);
+		if (await fs.get(`ranking/${uid}`)) {
+			borrar("estado", `ranking/${uid}`);
+		}
 
-		const estadisticas = await fs.consultar({ coleccion: "estadisticas_progreso", campo: "usuarioId", valor: uid });
-
-		estadisticas.forEach((estadistica) => borrar(estadistica.ruta));
+		(await fs.consultar({ coleccion: "estadisticas_progreso", campo: "usuarioId", valor: uid })).forEach((estadistica) =>
+			borrar("estado", estadistica.ruta)
+		);
 
 		if (modoReal) {
 			usuariosAReiniciar.push(uid);
 		} else {
-			borrar(`usuarios/${uid}`);
+			etapas.usuariosYCatalogo.push({ tipo: "delete", ruta: `usuarios/${uid}` });
+			sumar("usuarios");
 		}
 	}
+
+	// Respuestas demo cuyo resultado padre ya no existe (cortes anteriores).
+	respuestasDemo.forEach((respuesta) => rutasRespuestas.add(respuesta.ruta));
+	rutasRespuestas.forEach((ruta) => borrar("respuestasYResultados", ruta));
+	rutasResultados.forEach((ruta) => borrar("respuestasYResultados", ruta));
 
 	const cuestionariosDemo = await fs.consultar({ coleccion: "cuestionarios", campo: "esDemo", valor: true });
 
 	cuestionariosDemo.forEach((cuestionario) => cuestionariosABorrar.add(cuestionario.id));
-	cuestionariosABorrar.forEach((id) => borrar(`cuestionarios/${id}`));
+	cuestionariosABorrar.forEach((id) => borrar("cuestionarios", `cuestionarios/${id}`));
 
-	usuariosAReiniciar.forEach((uid) => {
-		operaciones.push({ tipo: "merge", ruta: `usuarios/${uid}`, datos: { xp: 0, nivel: 1 } });
-		sumar("usuarios (xp/nivel a 0/1)");
-	});
+	// El reinicio de xp/nivel va primero: si el borrado se corta, nunca quedan xp sin ninguna marca que los delate.
+	const reinicios = usuariosAReiniciar.map((uid) => ({ tipo: "merge", ruta: `usuarios/${uid}`, datos: { xp: 0, nivel: 1 } }));
 
-	if (!modoReal) {
-		IDS_AREAS_SEED.forEach((id) => borrar(`areas/${id}`));
-		PREGUNTAS_CON_ID.forEach((pregunta) => borrar(`preguntas/${pregunta.id}`));
-		IDS_LOGROS_SEED.forEach((id) => borrar(`logros/${id}`));
-		borrar("configuracion/general");
+	if (reinicios.length > 0) {
+		sumar("usuarios (xp/nivel a 0/1)", reinicios.length);
 	}
 
-	await fs.escribir(operaciones);
+	if (!modoReal) {
+		IDS_AREAS_SEED.forEach((id) => borrar("usuariosYCatalogo", `areas/${id}`));
+		PREGUNTAS_CON_ID.forEach((pregunta) => borrar("usuariosYCatalogo", `preguntas/${pregunta.id}`));
+		IDS_LOGROS_SEED.forEach((id) => borrar("usuariosYCatalogo", `logros/${id}`));
+		borrar("usuariosYCatalogo", "configuracion/general");
+	}
+
+	await fs.escribir([...reinicios, ...etapas.estado]);
+	await fs.escribir(etapas.respuestasYResultados);
+	await fs.escribir(etapas.cuestionarios);
+	await fs.escribir(etapas.usuariosYCatalogo);
 
 	if (!modoReal) {
 		for (const cuenta of CUENTAS) {
@@ -1256,11 +1337,8 @@ const modoEmulador = async (opciones) => {
 // Modo proyecto real
 // ---------------------------------------------------------------------------
 
-const leerProyectoReal = () => {
-	if (process.env.DEMO_PROJECT_ID) {
-		return process.env.DEMO_PROJECT_ID;
-	}
-
+// Proyecto por defecto de .firebaserc (projects.default), o null si no se puede leer.
+const leerProyectoDeFirebaserc = () => {
 	try {
 		const raiz = join(dirname(fileURLToPath(import.meta.url)), "..");
 		const firebaserc = JSON.parse(readFileSync(join(raiz, ".firebaserc"), "utf8"));
@@ -1273,6 +1351,75 @@ const leerProyectoReal = () => {
 
 const PERFILES_REALES_EN_ORDEN = ["fuerte", "medio", "flojo"];
 
+// Valida TODOS los correos antes de escribir o borrar nada: sin repetidos, que existan, que sean
+// estudiantes distintos y, si van a recibir historial, que no tengan actividad real. Solo lee.
+const resolverEstudiantes = async (fs, correos) => {
+	const vistos = new Set();
+
+	for (const correo of correos) {
+		const clave = correo.toLowerCase();
+
+		if (vistos.has(clave)) {
+			fallar(`El correo ${correo} está repetido en --emails. Cada estudiante debe aparecer una sola vez.`);
+		}
+
+		vistos.add(clave);
+	}
+
+	const estudiantes = [];
+	const uidsVistos = new Set();
+
+	for (const [indice, correo] of correos.entries()) {
+		// Se busca tal cual se escribió (el perfil guarda el correo como se tecleó al registrarse); si no
+		// aparece, se prueba en minúsculas, que Firebase Auth trata como la misma dirección.
+		let encontrados = await fs.consultar({ coleccion: "usuarios", campo: "correo", valor: correo });
+
+		if (encontrados.length === 0 && correo !== correo.toLowerCase()) {
+			encontrados = await fs.consultar({ coleccion: "usuarios", campo: "correo", valor: correo.toLowerCase() });
+		}
+
+		if (encontrados.length === 0) {
+			fallar(
+				`No se encontró ningún usuario con el correo "${correo}". Pasalo exactamente como se registró ` +
+					"(se respetan mayúsculas y minúsculas) y verificá que la cuenta esté registrada en este proyecto desde /registro."
+			);
+		}
+
+		if (encontrados.length > 1) {
+			fallar(`Hay ${encontrados.length} perfiles con el correo "${correo}"; no se puede elegir uno. Revisá la colección usuarios.`);
+		}
+
+		const usuario = encontrados[0];
+		const perfil = PERFILES_REALES_EN_ORDEN[indice] ?? null;
+
+		if (usuario.rol !== "estudiante") {
+			fallar(`${correo} no es un estudiante (rol: ${usuario.rol}). Solo se escribe historial en cuentas de estudiante.`);
+		}
+
+		if (uidsVistos.has(usuario.id)) {
+			fallar(`El correo ${correo} corresponde a un estudiante que ya aparece en --emails con otra escritura.`);
+		}
+
+		uidsVistos.add(usuario.id);
+
+		if (perfil) {
+			const resultadosPropios = await fs.consultar({ coleccion: "resultados", campo: "usuarioId", valor: usuario.id });
+
+			if (resultadosPropios.some((resultado) => resultado.esDemo !== true)) {
+				fallar(`${correo} ya tiene pruebas reales; el modo --real solo se usa con cuentas recién registradas.`);
+			}
+
+			if (resultadosPropios.length === 0 && ((usuario.xp ?? 0) > 0 || (usuario.nivel ?? 1) > 1)) {
+				fallar(`${correo} ya tiene xp/nivel sin pruebas demo; el modo --real solo se usa con cuentas recién registradas.`);
+			}
+		}
+
+		estudiantes.push({ correo, usuario, perfil });
+	}
+
+	return estudiantes;
+};
+
 const modoReal = async (opciones) => {
 	const token = process.env.DEMO_ACCESS_TOKEN;
 
@@ -1283,40 +1430,77 @@ const modoReal = async (opciones) => {
 		);
 	}
 
-	const proyecto = leerProyectoReal();
-
-	if (!proyecto) {
-		fallar("No se pudo determinar el proyecto: definí DEMO_PROJECT_ID o completá projects.default en .firebaserc.");
-	}
-
-	// Con DEMO_FIRESTORE_EMULATOR_HOST definido, el flujo REST completo se ejecuta contra el emulador.
-	const emuladorHost = process.env.DEMO_FIRESTORE_EMULATOR_HOST ? HOST_FIRESTORE : null;
-
+	const borra = Boolean(opciones.reset || opciones.borrar);
 	const soloBorrar = Boolean(opciones.borrar) || (Boolean(opciones.reset) && !opciones.correos);
 	const dryRun = Boolean(opciones["dry-run"]);
+
+	if (opciones.yes && borra) {
+		fallar("--yes no se puede combinar con --reset ni --borrar: borrar siempre pide confirmar el id del proyecto.");
+	}
 
 	if (!soloBorrar && !opciones.correos) {
 		fallar("Con --real hay que indicar los estudiantes ya registrados: --emails a@x.com,b@x.com,c@x.com");
 	}
 
-	log(`Modo REAL${emuladorHost ? ` (contra el emulador ${emuladorHost})` : ""}. Proyecto: ${proyecto}${dryRun ? " [dry-run: no se escribe nada]" : ""}`);
+	// Con DEMO_FIRESTORE_EMULATOR_HOST definido, el flujo REST completo se ejecuta contra el emulador.
+	const emuladorHost = process.env.DEMO_FIRESTORE_EMULATOR_HOST ? HOST_FIRESTORE : null;
+	const esperado = leerProyectoDeFirebaserc();
+	const pedido = process.env.DEMO_PROJECT_ID ?? null;
+	let proyecto;
 
-	if (!dryRun && !emuladorHost && !opciones.yes) {
-		const consola = createInterface({ input: process.stdin, output: process.stdout });
-		const respuesta = await consola.question(`Se va a ESCRIBIR en el proyecto "${proyecto}". Escribí el id del proyecto para confirmar: `);
+	if (emuladorHost) {
+		proyecto = pedido ?? esperado;
 
-		consola.close();
-
-		if (respuesta.trim() !== proyecto) {
-			fallar("El id no coincide; no se escribió nada.");
+		if (!proyecto) {
+			fallar("Contra el emulador hay que definir DEMO_PROJECT_ID (por ejemplo demo-learnfex).");
 		}
+	} else {
+		if (!esperado) {
+			fallar("No se pudo leer projects.default de .firebaserc: el modo --real lo usa como proyecto esperado.");
+		}
+
+		if (pedido && pedido !== esperado) {
+			fallar(
+				`DEMO_PROJECT_ID (${pedido}) no coincide con el proyecto por defecto de .firebaserc (${esperado}). ` +
+					"Por seguridad solo se escribe en el proyecto de .firebaserc: cambialo con `firebase use` o quitá DEMO_PROJECT_ID."
+			);
+		}
+
+		proyecto = esperado;
 	}
+
+	log(`Modo REAL${emuladorHost ? ` (contra el emulador ${emuladorHost})` : ""}. Proyecto: ${proyecto}${dryRun ? " [dry-run: no se escribe nada]" : ""}`);
 
 	proyectoCuota = emuladorHost ? null : (process.env.DEMO_QUOTA_PROJECT ?? null);
 
 	const fs = crearFirestore({ proyecto, emuladorHost, token, dryRun });
 
-	if (opciones.reset || opciones.borrar) {
+	// Validación previa de todo lo que se va a usar: si algo falla, no se escribió ni se borró nada.
+	const estudiantes = opciones.correos ? await resolverEstudiantes(fs, opciones.correos) : [];
+	let banco = null;
+
+	if (!soloBorrar) {
+		banco = await leerBanco(fs);
+		validarBanco(banco);
+	}
+
+	if (!dryRun && !emuladorHost) {
+		const accion = borra ? "BORRAR datos demo en" : "ESCRIBIR en";
+		const consola = createInterface({ input: process.stdin, output: process.stdout });
+		let respuesta = proyecto;
+
+		if (!opciones.yes) {
+			respuesta = await consola.question(`Se va a ${accion} el proyecto "${proyecto}" (el de .firebaserc). Escribí el id del proyecto para confirmar: `);
+		}
+
+		consola.close();
+
+		if (respuesta.trim() !== proyecto) {
+			fallar("El id no coincide; no se escribió ni se borró nada.");
+		}
+	}
+
+	if (borra) {
 		await borrarDemo(fs, { modoReal: true });
 	}
 
@@ -1324,43 +1508,18 @@ const modoReal = async (opciones) => {
 		return;
 	}
 
-	const banco = await leerBanco(fs);
-
-	validarBanco(banco);
-
 	const ahora = new Date();
 	const resumen = [];
 
-	for (const [indice, correo] of opciones.correos.entries()) {
-		const encontrados = await fs.consultar({ coleccion: "usuarios", campo: "correo", valor: correo });
-
-		if (encontrados.length !== 1) {
-			fallar(`No se encontró (o hay más de uno) el usuario con correo ${correo}. Registralo primero desde /registro.`);
-		}
-
-		const usuario = encontrados[0];
-		const perfil = PERFILES_REALES_EN_ORDEN[indice] ?? null;
-
-		if (usuario.rol !== "estudiante") {
-			fallar(`${correo} no es un estudiante (rol: ${usuario.rol}).`);
-		}
-
+	for (const { correo, usuario, perfil } of estudiantes) {
 		if (!perfil) {
 			log(`\n${correo}: sin perfil de historial (queda como estudiante nuevo, sin pruebas).`);
 			resumen.push({ Correo: correo, Perfil: "nuevo (sin pruebas)", Pruebas: 0, XP: usuario.xp ?? 0, Nivel: usuario.nivel ?? 1, Logros: 0 });
 			continue;
 		}
 
+		// Se vuelve a leer: con --reset los resultados demo acaban de borrarse.
 		const resultadosPropios = await fs.consultar({ coleccion: "resultados", campo: "usuarioId", valor: usuario.id });
-
-		if (resultadosPropios.some((resultado) => resultado.esDemo !== true)) {
-			fallar(`${correo} ya tiene pruebas reales; el modo --real solo se usa con cuentas recién registradas.`);
-		}
-
-		if (resultadosPropios.length === 0 && ((usuario.xp ?? 0) > 0 || (usuario.nivel ?? 1) > 1)) {
-			fallar(`${correo} ya tiene xp/nivel sin pruebas demo; el modo --real solo se usa con cuentas recién registradas.`);
-		}
-
 		const pruebas = planDePerfil(perfil, banco, ahora);
 		const gamificacion = simularGamificacion(pruebas, banco.logros);
 
@@ -1382,6 +1541,7 @@ const modoReal = async (opciones) => {
 
 		resumen.push({ Correo: correo, Perfil: perfil, Pruebas: pruebas.length, XP: gamificacion.xp, Nivel: gamificacion.nivel, Logros: gamificacion.logros.length });
 	}
+
 
 	log("\n==================== RESUMEN ====================\n");
 	imprimirTabla(resumen, ["Correo", "Perfil", "Pruebas", "XP", "Nivel", "Logros"]);
