@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { connectAuthEmulator, getAuth, signInWithEmailAndPassword } from "firebase/auth";
 import { connectFirestoreEmulator, doc, getFirestore, setDoc } from "firebase/firestore";
+import { pathToFileURL } from "node:url";
 
 const firebaseConfig = {
 	apiKey: process.env.VITE_FIREBASE_API_KEY,
@@ -14,7 +15,7 @@ const firebaseConfig = {
 const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL;
 const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD;
 
-const areas = [
+export const areas = [
 	{ id: "matematicas", nombre: "Matemáticas", descripcion: "Razonamiento cuantitativo y resolución de problemas.", numPreguntas: 6, tiempoLimite: 20 },
 	{ id: "lectura_critica", nombre: "Lectura Crítica", descripcion: "Comprensión e interpretación de textos.", numPreguntas: 6, tiempoLimite: 20 },
 	{ id: "ciencias_naturales", nombre: "Ciencias Naturales", descripcion: "Biología, física y química.", numPreguntas: 6, tiempoLimite: 20 },
@@ -22,7 +23,7 @@ const areas = [
 	{ id: "ingles", nombre: "Inglés", descripcion: "Comprensión lectora y gramática en inglés.", numPreguntas: 6, tiempoLimite: 15 },
 ];
 
-const preguntas = [
+export const preguntas = [
 	{
 		areaId: "matematicas",
 		dificultad: "baja",
@@ -545,7 +546,7 @@ const preguntas = [
 	},
 ];
 
-const logros = [
+export const logros = [
 	{ id: "primer_quiz", nombre: "Primer paso", descripcion: "Completá tu primer cuestionario o simulacro.", criterio: "primer_quiz" },
 	{ id: "cinco_simulacros", nombre: "Estudiante dedicado", descripcion: "Completá 5 simulacros o cuestionarios.", criterio: "cinco_simulacros" },
 	{ id: "diez_simulacros", nombre: "Maestro de las áreas", descripcion: "Completá 10 simulacros o cuestionarios.", criterio: "diez_simulacros" },
@@ -570,7 +571,6 @@ async function seed() {
 
 	// Optional: seed the local Firebase Emulator Suite instead of production.
 	// Ports must match the "emulators" block of firebase.json.
-	// eslint-disable-next-line no-undef -- pre-existing: this Node script is linted with browser globals
 	if (process.env.SEED_USE_EMULATORS === "true") {
 		connectAuthEmulator(auth, "http://127.0.0.1:9099");
 		connectFirestoreEmulator(db, "127.0.0.1", 8080);
@@ -598,7 +598,11 @@ async function seed() {
 	process.exit(0);
 }
 
-seed().catch((error) => {
-	console.error("Error al cargar los datos semilla:", error);
-	process.exit(1);
-});
+// Los datos (areas, preguntas, logros) se exportan para que scripts/seed-demo.js los reutilice;
+// la carga solo se ejecuta cuando este archivo se corre directamente (node scripts/seed-preguntas.js).
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+	seed().catch((error) => {
+		console.error("Error al cargar los datos semilla:", error);
+		process.exit(1);
+	});
+}
