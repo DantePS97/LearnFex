@@ -47,6 +47,10 @@ Si falta `SEED_ADMIN_EMAIL` o `SEED_ADMIN_PASSWORD`, el script termina con un me
 
 El usuario administrador debe existir en Firebase Authentication y su documento `usuarios/{uid}` debe tener `rol: administrador`; las reglas de Firestore exigen ese rol para escribir áreas, preguntas y logros. El primer administrador se asigna siempre a mano, editando el documento en la consola de Firestore (o en la interfaz de los emuladores).
 
+## Script de datos de demostración (`scripts/seed-demo.js`)
+
+Este script no usa las variables `VITE_*` ni `SEED_*`. Sus variables, todas opcionales salvo la primera en modo `--real`, se explican en [datos-demo.md](datos-demo.md): `DEMO_ACCESS_TOKEN` (secreta: token de acceso, solo modo `--real`, nunca se versiona ni se imprime), `DEMO_PROJECT_ID`, `DEMO_QUOTA_PROJECT`, `DEMO_AUTH_EMULATOR_HOST`, `DEMO_FIRESTORE_EMULATOR_HOST` y `DEMO_FUNCTIONS_EMULATOR_HOST`.
+
 ## Reglas de manejo
 
 - No versionar nunca `SEED_ADMIN_PASSWORD` ni ningún archivo que la contenga.
