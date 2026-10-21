@@ -1,7 +1,9 @@
 import { initializeApp } from "firebase/app";
 import { connectAuthEmulator, getAuth, signInWithEmailAndPassword } from "firebase/auth";
 import { connectFirestoreEmulator, doc, getFirestore, setDoc } from "firebase/firestore";
-import { pathToFileURL } from "node:url";
+import { realpathSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const firebaseConfig = {
 	apiKey: process.env.VITE_FIREBASE_API_KEY,
@@ -600,7 +602,24 @@ async function seed() {
 
 // Los datos (areas, preguntas, logros) se exportan para que scripts/seed-demo.js los reutilice;
 // la carga solo se ejecuta cuando este archivo se corre directamente (node scripts/seed-preguntas.js).
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+// La comparación usa rutas reales y en minúsculas: en Windows la letra de unidad o las mayúsculas
+// de la ruta pueden variar entre process.argv[1] e import.meta.url, y un enlace simbólico también.
+const seEjecutaDirectamente = () => {
+	if (!process.argv[1]) {
+		return false;
+	}
+
+	try {
+		const invocado = realpathSync(resolve(process.argv[1])).toLowerCase();
+		const propio = realpathSync(fileURLToPath(import.meta.url)).toLowerCase();
+
+		return invocado === propio;
+	} catch {
+		return false;
+	}
+};
+
+if (seEjecutaDirectamente()) {
 	seed().catch((error) => {
 		console.error("Error al cargar los datos semilla:", error);
 		process.exit(1);
