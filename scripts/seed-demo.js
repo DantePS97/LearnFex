@@ -32,6 +32,11 @@
 //
 // El script no lee ni imprime tokens ni credenciales de ningún archivo: el único secreto posible
 // es DEMO_ACCESS_TOKEN (variable de entorno, solo modo --real).
+//
+// Variables de entorno: DEMO_ACCESS_TOKEN, DEMO_PROJECT_ID (si falta, projects.default de
+// .firebaserc), DEMO_QUOTA_PROJECT (opcional), DEMO_AUTH_EMULATOR_HOST,
+// DEMO_FIRESTORE_EMULATOR_HOST y DEMO_FUNCTIONS_EMULATOR_HOST (hosts locales; con --real,
+// DEMO_FIRESTORE_EMULATOR_HOST hace que todo el flujo corra contra el emulador).
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -307,11 +312,19 @@ const leerArgumentos = (argv) => {
 // HTTP y codificación de Firestore REST
 // ---------------------------------------------------------------------------
 
+// Proyecto de cuota opcional (DEMO_QUOTA_PROJECT, solo modo --real): algunas cuentas necesitan
+// enviarlo en la cabecera x-goog-user-project para usar la API REST de Firestore.
+let proyectoCuota = null;
+
 const http = async (metodo, url, { cuerpo, token, permitir404 = false } = {}) => {
 	const cabeceras = { "Content-Type": "application/json" };
 
 	if (token) {
 		cabeceras.Authorization = `Bearer ${token}`;
+
+		if (proyectoCuota) {
+			cabeceras["x-goog-user-project"] = proyectoCuota;
+		}
 	}
 
 	const respuesta = await fetch(url, {
@@ -1298,6 +1311,8 @@ const modoReal = async (opciones) => {
 			fallar("El id no coincide; no se escribió nada.");
 		}
 	}
+
+	proyectoCuota = emuladorHost ? null : (process.env.DEMO_QUOTA_PROJECT ?? null);
 
 	const fs = crearFirestore({ proyecto, emuladorHost, token, dryRun });
 
