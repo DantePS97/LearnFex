@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "emuladores": "firebase emulators:start --project demo-learnfex",
+    "seed:demo": "node scripts/seed-demo.js",
+    "seed:demo:reset": "node scripts/seed-demo.js --reset"
   },
   "dependencies": {
     "firebase": "^12.18.0",
