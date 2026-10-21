@@ -169,14 +169,16 @@ Notas para improvisar:
 
 Esta parte es opcional y la ejecuta el dueño del proyecto. El modo `--real` **no crea cuentas ni toca Authentication**: escribe el historial de estudiantes que ya existen. Escribe en el Firestore real, saltándose las reglas de seguridad (usa permisos de administrador del proyecto), por eso pide confirmación.
 
-Qué escribe, para cada estudiante: cuestionarios, resultados con sus respuestas, ranking, logros obtenidos, estadísticas de progreso y la actualización de `xp` y `nivel` en `usuarios`. Tiene las mismas formas de dato que produce la Cloud Function `calificarPrueba`, y marca todo con `esDemo: true` para poder borrarlo después. No escribe áreas, preguntas, logros ni configuración: el banco ya debe estar cargado.
+Qué escribe, para cada estudiante: cuestionarios, resultados con sus respuestas, ranking, logros obtenidos, estadísticas de progreso y la actualización de `xp` y `nivel` en `usuarios`. Tiene las mismas formas de dato que produce la Cloud Function `calificarPrueba`. Marca con `esDemo: true` los cuestionarios, los resultados, las respuestas, el ranking, los logros obtenidos y las estadísticas que escribe, para poder encontrarlos después. **No** marca los perfiles de `usuarios` (son cuentas reales): solo les actualiza `xp` y `nivel`. No escribe áreas, preguntas, logros ni configuración: el banco ya debe estar cargado.
 
 Perfiles: con la lista de correos, el primero recibe el historial del estudiante fuerte, el segundo el del medio y el tercero el del débil. Del cuarto en adelante no se escribe nada (quedan como estudiantes nuevos). La contraseña de cada cuenta es la que se usó al registrarla.
+
+Validación previa: antes de escribir o borrar nada, el script lee y valida **todos** los correos y, si algo falla, se detiene sin haber tocado datos. Rechaza correos repetidos, correos que no existen, cuentas que no son de estudiante, cuentas con pruebas reales y cuentas con `xp` o `nivel` sin pruebas demo. Esto vale también con `--reset --emails`.
 
 Pasos:
 
 1. **Banco cargado.** El proyecto real debe tener las 5 áreas con al menos 6 preguntas cada una y el catálogo de logros (se cargan con `scripts/seed-preguntas.js`, ver [variables-de-entorno.md](variables-de-entorno.md)). El script lo comprueba y se detiene con un mensaje si falta algo.
-2. **Registrar a mano 3 o 4 estudiantes** desde `/registro` de la aplicación real, marcando el consentimiento. Deben ser cuentas nuevas, sin pruebas: el script se niega a escribir sobre estudiantes que ya tienen actividad real.
+2. **Registrar a mano 3 o 4 estudiantes** desde `/registro` de la aplicación real, marcando el consentimiento. Usá cuentas recién registradas, sin pruebas: el script se niega a escribir sobre estudiantes que ya tienen actividad real. Anotá los correos **tal cual los escribiste al registrarte**: el perfil guarda el correo con las mismas mayúsculas y minúsculas, y el script lo busca así (si no lo encuentra, prueba en minúsculas, pero no más que eso).
 3. **Obtener un token de acceso** de una cuenta con permisos sobre Firestore del proyecto (propietario o rol de Cloud Datastore). Con la CLI de Google Cloud ya iniciada:
 
    PowerShell:
@@ -191,21 +193,21 @@ Pasos:
    export DEMO_ACCESS_TOKEN=$(gcloud auth print-access-token)
    ```
 
-   El token dura aproximadamente una hora, vive solo en esa terminal y el script nunca lo imprime ni lo guarda. No lo pegues en archivos ni en chats. Si la API responde que falta un proyecto de cuota, define también `DEMO_QUOTA_PROJECT` con el id del proyecto.
-4. **Indicar el proyecto.** Por defecto se usa el de `.firebaserc` (`projects.default`). Para otro, define `DEMO_PROJECT_ID`.
+   El token dura aproximadamente una hora: generalo justo antes de correr el script (un token vencido a mitad de camino interrumpe la escritura). Vive solo en esa terminal y el script nunca lo imprime ni lo guarda. No lo pegues en archivos ni en chats. Si la API responde que falta un proyecto de cuota, define también `DEMO_QUOTA_PROJECT` con el id del proyecto.
+4. **Proyecto.** El script solo escribe en el proyecto por defecto de `.firebaserc` (`projects.default`); ese es el proyecto esperado. Si defines `DEMO_PROJECT_ID` con un id distinto, el script se detiene con un mensaje claro. Para cambiar de proyecto usa `firebase use` (o no definas `DEMO_PROJECT_ID`). Comprueba el id que imprime la primera línea ("Modo REAL ... Proyecto: ...") antes de confirmar.
 5. **Ensayo sin escribir (`--dry-run`).** Lista las pruebas y los documentos que se escribirían, sin escribir nada:
 
    ```bash
    npm run seed:demo -- --real --dry-run --emails uno@correo.com,dos@correo.com,tres@correo.com,cuatro@correo.com
    ```
 
-6. **Ejecución real.** El mismo comando sin `--dry-run`. El script pide escribir el id del proyecto para confirmar (`--yes` omite esa pregunta):
+6. **Ejecución real.** El mismo comando sin `--dry-run`. El script pide escribir el id del proyecto para confirmar:
 
    ```bash
    npm run seed:demo -- --real --emails uno@correo.com,dos@correo.com,tres@correo.com,cuatro@correo.com
    ```
 
-   Es idempotente: si lo corres otra vez, no duplica nada.
+   Es idempotente: si lo corres otra vez, no duplica nada. Atención con `--yes`: omite la pregunta de confirmación, que es la única barrera antes de escribir en el proyecto real. Úsalo solo si ya revisaste el `--dry-run` y estás seguro del proyecto. No se permite junto con `--reset` ni `--borrar`: borrar siempre pide confirmar.
 7. **Revisar** entrando a la aplicación con esas cuentas y con una de administrador: Inicio, Estadísticas, Ranking, Logros, Historial y Dashboard.
 8. **Borrar lo demo después:**
 
@@ -213,7 +215,16 @@ Pasos:
    npm run seed:demo -- --real --reset
    ```
 
-   Borra solo lo marcado con `esDemo` (cuestionarios, resultados, respuestas, ranking, logros obtenidos y estadísticas de esos estudiantes) y devuelve `xp` y `nivel` a 0 y 1. Las cuentas, sus perfiles, el banco y la configuración no se tocan. Si un estudiante ya hizo pruebas reales además de las demo, el script conserva su `xp`, ranking y logros y lo avisa. Para borrar y volver a crear en un solo paso, agrega `--emails ...`.
+   Qué borra exactamente:
+
+   - Los documentos marcados con `esDemo`: cuestionarios, resultados y sus respuestas.
+   - De cada estudiante que tuvo datos demo, **por uid y no por la marca**: su ranking, sus logros obtenidos y sus estadísticas de progreso (esos documentos pueden haber sido reescritos por la aplicación, y se borran aunque ya no estén marcados; la aplicación vuelve a crear las estadísticas al abrir Estadísticas). Y les devuelve `xp` y `nivel` a 0 y 1.
+   - Si un estudiante ya hizo pruebas reales además de las demo, solo se borran sus resultados demo y se conservan su `xp`, ranking, logros y estadísticas; el script lo avisa.
+   - Las cuentas, los perfiles, el banco y la configuración no se tocan.
+
+   Para borrar y volver a crear en un solo paso, agrega `--emails ...` (se validan antes de borrar).
+
+   **Si el borrado se interrumpe** (corte de red, token vencido): vuelve a correr `npm run seed:demo -- --real --reset`. El borrado va en orden (primero `xp`, ranking, logros y estadísticas; luego respuestas y resultados; al final los cuestionarios) y descubre qué limpiar por cualquier marca que haya quedado (resultados, ranking, estadísticas o logros marcados), así que la segunda corrida termina el trabajo. Las respuestas huérfanas (sin su resultado) y los logros marcados se buscan con una consulta de grupo de colecciones; en Firestore real puede exigir un índice. Si el script avisa que no pudo hacer esa búsqueda, igual completa el borrado a partir de los resultados, el ranking y las estadísticas que encuentre, pero podrían quedar respuestas huérfanas, que se pueden borrar a mano desde la consola de Firestore (campo `esDemo` igual a `true`).
 
 Ten en cuenta: el Dashboard y los Reportes del proyecto real incluirán estos datos mientras existan. Borra lo demo antes de que los usuarios reales empiecen a usar la aplicación.
 
@@ -243,6 +254,10 @@ Lista de verificación, idealmente el día anterior y otra vez una hora antes:
 | "Verificación cruzada: N diferencia(s)" | Datos previos mezclados con los nuevos | `npm run seed:demo:reset` o reinicio completo |
 | El seed dice "Faltan preguntas..." (modo real) | El banco del proyecto real no está cargado | Carga el banco con `scripts/seed-preguntas.js` |
 | El modo real falla con 401 o 403 | Token vencido o sin permisos | Genera otro token (dura aprox. 1 hora) con una cuenta con permisos sobre Firestore; si pide proyecto de cuota, define `DEMO_QUOTA_PROJECT` |
+| El modo real dice "No se encontró ningún usuario con el correo ..." | El correo no coincide con el del registro (se respetan mayúsculas) o la cuenta es de otro proyecto | Pasa el correo exactamente como lo escribiste al registrarte y confirma que la cuenta exista en el proyecto de `.firebaserc` |
+| El modo real dice "está repetido", "no es un estudiante" o "ya tiene pruebas reales" | La lista de `--emails` no es válida | Corrige la lista: sin repetidos, solo estudiantes y cuentas recién registradas. No se escribió ni se borró nada |
+| El modo real dice que `DEMO_PROJECT_ID` no coincide con `.firebaserc` | Variable de entorno de otro proyecto | Quita `DEMO_PROJECT_ID` o ejecuta `firebase use` para el proyecto correcto |
+| Un `--reset --real` se interrumpió | Corte de red o token vencido | Genera otro token y vuelve a correr `npm run seed:demo -- --real --reset`: termina el borrado |
 | Se pierde el estado a mitad de la demo | Se cerraron los emuladores | Levántalos y ejecuta `npm run seed:demo` (1 minuto) |
 
 ## Cómo funciona por dentro
@@ -252,10 +267,11 @@ Resumen técnico para quien quiera entender o ampliar el script (`scripts/seed-d
 - **Cuentas:** se crean en el Auth Emulator con su API REST (`accounts:signUp`). Los documentos de `usuarios` tienen la misma forma que crea el registro real (`createUserProfile`): `rol`, `estado`, `xp`, `nivel`, `colegio`, `fechaRegistro`, `consentimientoDatos: true` y `fechaConsentimiento`. Daniela se crea activa, recibe su historial y al final pasa a `estado: "inactivo"`.
 - **Historial en modo emulador:** para cada prueba se crea el cuestionario (`demo_<perfil>_<NN>`) y se invoca la Cloud Function real `calificarPrueba` con el token de la cuenta del estudiante, de modo que la calificación, el XP (`min(correctas × 10, 100)`), el nivel (`floor(xp / 1000) + 1`), el ranking y los logros los calcula el código real. La función usa `serverTimestamp()`, así que después se reescriben con permisos de administrador las fechas de los resultados, de los logros obtenidos, del cuestionario y del ranking para repartir la actividad en los últimos 19 días.
 - **Estadísticas de progreso:** documentos `estadisticas_progreso/<uid>_<areaId>` con `porcentajeAvance` y `promedioAciertos`, calculados con la misma fórmula que `calcularEstadisticas`. La app también los actualiza sola al abrir Estadísticas.
-- **Verificación cruzada:** al terminar, el script compara lo que escribió la función (puntajes, respuestas, XP, nivel, ranking y logros) con el plan que calculó por su cuenta. Un resultado "OK" prueba también que la réplica usada por el modo `--real` coincide con la función.
+- **Verificación cruzada:** al terminar, el script compara lo que escribió la función (puntajes, respuestas, XP, nivel, ranking y logros) con el plan que calculó por su cuenta. Junto con la comparación del modo directo (siguiente punto), esto respalda que la réplica usada por el modo `--real` produce los mismos datos que la función.
 - **Modo directo:** `--directo` escribe el historial por REST sin llamar a la función, con el mismo código que el modo `--real`. En las pruebas de este cambio, el estado resultante fue idéntico al del modo con función (salvo los ids automáticos de las respuestas).
 - **Datos deterministas:** las respuestas de cada prueba salen de un generador pseudoaleatorio con semilla fija (perfil y número de prueba), así que siempre se cargan los mismos datos.
-- **Marca `esDemo`:** los documentos demo llevan `esDemo: true` (excepto el banco y la configuración, que se borran por id en el emulador). `--reset` se basa en esa marca y en los ids conocidos.
+- **Marca `esDemo`:** llevan `esDemo: true` los cuestionarios, los resultados, el ranking, los logros obtenidos, las estadísticas de progreso y, en el modo directo y en `--real`, las respuestas. En el modo con función las respuestas las crea la función sin marca; el reset del emulador las borra igual, listándolas desde cada resultado. Los perfiles de `usuarios` se marcan solo en el emulador. El banco y la configuración no se marcan: en el emulador se borran por id conocido, y en `--real` nunca se tocan. Por eso `--reset` no se basa únicamente en la marca: completa por uid (ranking, logros y estadísticas de los estudiantes afectados) y por los ids conocidos.
+- **Reset con corte a mitad:** el borrado se hace en etapas ordenadas (`xp`, ranking, logros y estadísticas; respuestas y resultados; cuestionarios; y en el emulador, perfiles y banco) y descubre los uid por cualquier marca restante. Se probó cortando el segundo, tercer y cuarto commit con un proxy que devolvía error, y en todos los casos la segunda corrida dejó todo limpio.
 
 Opciones del script (`node scripts/seed-demo.js --ayuda` las lista):
 
@@ -263,8 +279,8 @@ Opciones del script (`node scripts/seed-demo.js --ayuda` las lista):
 | ------ | ------ |
 | `--reset` | Borra lo demo y lo recrea (con `--real`, solo borra salvo que se pasen `--emails`) |
 | `--borrar` | Solo borra lo demo |
-| `--real`, `--emails`, `--dry-run`, `--yes` | Modo proyecto real, ver [arriba](#usar-los-datos-en-el-proyecto-real) |
+| `--real`, `--emails`, `--dry-run`, `--yes` | Modo proyecto real, ver [arriba](#usar-los-datos-en-el-proyecto-real). `--yes` quita la confirmación y no se admite con `--reset` ni `--borrar` |
 | `--solo-base` | Crea cuentas, perfiles y banco, sin historial |
 | `--directo` | Escribe el historial por REST sin llamar a la función |
 
-Variables de entorno del script: `DEMO_ACCESS_TOKEN` (solo `--real`), `DEMO_PROJECT_ID`, `DEMO_QUOTA_PROJECT`, `DEMO_AUTH_EMULATOR_HOST`, `DEMO_FIRESTORE_EMULATOR_HOST` y `DEMO_FUNCTIONS_EMULATOR_HOST`. En modo emulador el proyecto debe empezar con `demo-`, y los hosts solo pueden ser locales (127.0.0.1, localhost o [::1]).
+Variables de entorno del script: `DEMO_ACCESS_TOKEN` (solo `--real`), `DEMO_PROJECT_ID` (con `--real`, si se define debe coincidir con `.firebaserc`), `DEMO_QUOTA_PROJECT`, `DEMO_AUTH_EMULATOR_HOST`, `DEMO_FIRESTORE_EMULATOR_HOST` y `DEMO_FUNCTIONS_EMULATOR_HOST`. En modo emulador el proyecto debe empezar con `demo-`, y los hosts solo pueden ser locales (127.0.0.1, localhost o [::1]).
