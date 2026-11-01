@@ -79,7 +79,7 @@ Conviene decirlo vos antes de que lo pregunten:
 
 **¿Los datos de ejemplo son reales?** No. Son cuentas y resultados de demostración, marcados como tales, que se pueden borrar con un comando antes de que entren estudiantes reales.
 
-**¿Cuánto falta para entregar?** La fecha de entrega es el 06/11/2026. Lo que falta está en la sección 6; lo más importante es el banco de preguntas real y la prueba con estudiantes.
+**¿Cuánto falta para entregar?** La fecha límite de entrega es el 31/10/2026, según el Plan de Proyecto. Lo que falta está en la sección 6; lo más importante es el banco de preguntas real y la prueba con estudiantes.
 
 **¿Por qué no cerraron ya lo de las respuestas legibles?** Cerrarlo exige rediseñar la pantalla de retroalimentación, que hoy lee la respuesta correcta directamente. Se evaluó, se registró la decisión en el tablero y se aceptó el riesgo de forma temporal mientras no hay estudiantes reales.
 
