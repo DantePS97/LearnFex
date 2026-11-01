@@ -1,6 +1,6 @@
 # LearnFex
 
-LearnFex es una aplicación web educativa y responsive para preparar a estudiantes de grados décimo y undécimo para las pruebas ICFES Saber 11. Ofrece cuestionarios por área con temporizador, calificación automática con retroalimentación, estadísticas de progreso, puntos de experiencia (XP), niveles, logros y ranking. Incluye además un panel de administración para gestionar usuarios, preguntas, logros y la configuración general.
+LearnFex es una aplicación web educativa y responsive para preparar a estudiantes de grados décimo y undécimo para las pruebas ICFES Saber 11. Ofrece cuestionarios por área y un simulacro completo con temporizador, calificación automática en el servidor con retroalimentación, estadísticas de progreso, puntos de experiencia (XP), niveles, logros y ranking. El registro exige el consentimiento para el tratamiento de datos personales. Incluye además un panel de administración con Dashboard, gestión de usuarios, preguntas, simulacros y logros, reportes por área y la configuración general.
 
 Es un proyecto académico del equipo SENA (Guamal, Magdalena). Los documentos de diseño están en `docs/`: Especificación de Requisitos (ERS), Diseño de Software (SDD) y Plan de Proyecto, en formato `.docx`.
 
@@ -13,6 +13,7 @@ Es un proyecto académico del equipo SENA (Guamal, Magdalena). Los documentos de
 - [Scripts disponibles](#scripts-disponibles)
 - [Desarrollo local con la Emulator Suite](#desarrollo-local-con-la-emulator-suite)
 - [Carga de datos iniciales (seed)](#carga-de-datos-iniciales-seed)
+- [Datos de demostración](#datos-de-demostración)
 - [Estructura del proyecto](#estructura-del-proyecto)
 - [Pruebas](#pruebas)
 - [Despliegue](#despliegue)
@@ -90,6 +91,9 @@ Raíz del repositorio (`package.json`):
 | `npm run build` | Genera el build de producción en `dist/` (`vite build`) |
 | `npm run preview` | Sirve localmente el build generado, para revisarlo |
 | `npm run lint` | Ejecuta ESLint sobre todo el repositorio |
+| `npm run emuladores` | Inicia la Emulator Suite con el proyecto de demostración (`firebase emulators:start --project demo-learnfex`) |
+| `npm run seed:demo` | Carga cuentas y datos de demostración en los emuladores (ver [Datos de demostración](#datos-de-demostración)) |
+| `npm run seed:demo:reset` | Borra lo de demostración y lo vuelve a crear |
 
 Carpeta `functions/` (`functions/package.json`):
 
@@ -99,7 +103,7 @@ Carpeta `functions/` (`functions/package.json`):
 | `npm run serve` | Inicia solo el emulador de Functions (`firebase emulators:start --only functions`) |
 | `npm run logs` | Muestra los registros de la función desplegada (`firebase functions:log`) |
 
-Nota: `npm run lint` reporta hallazgos preexistentes en el código (en la fecha de este documento, 26 errores y 2 advertencias). Un cambio nuevo no debería aumentar ese número.
+Nota: `npm run lint` reporta hallazgos preexistentes en el código (en la fecha de este documento, 15 errores y 2 advertencias). Un cambio nuevo no debería aumentar ese número. La carpeta `.claude/` (copias de trabajo locales, no versionadas) está excluida del análisis.
 
 ## Desarrollo local con la Emulator Suite
 
@@ -134,7 +138,7 @@ Cosas a tener en cuenta:
 
 - El archivo `firebase.json` activa `singleProjectMode`: el ID de proyecto del cliente (`VITE_FIREBASE_PROJECT_ID`) debe coincidir con el que se pasa a `--project`.
 - Los datos de los emuladores no persisten entre ejecuciones (no hay exportación configurada), así que hay que volver a cargar el seed cada vez.
-- Un usuario que se registra en la aplicación siempre queda con rol `estudiante`. Para probar el panel de administración hay que cambiar a mano el campo `rol` de su documento `usuarios/{uid}` a `administrador`, desde la interfaz de los emuladores (pestaña Firestore).
+- Un usuario que se registra en la aplicación siempre queda con rol `estudiante`. Para probar el panel de administración hay que cambiar a mano el campo `rol` de su documento `usuarios/{uid}` a `administrador`, desde la interfaz de los emuladores (pestaña Firestore). Si se carga `npm run seed:demo`, ya hay un administrador y estudiantes de prueba (ver [Datos de demostración](#datos-de-demostración)).
 - Los emuladores no exigen los índices compuestos de `firestore.indexes.json`; en un proyecto real sí hacen falta (ver el manual técnico).
 
 ## Carga de datos iniciales (seed)
@@ -157,6 +161,21 @@ Eso exige agregar `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` y, si corresponde, `
 
 Advertencia: sin `SEED_USE_EMULATORS=true`, el script escribe en el proyecto de Firebase que indiquen las variables `VITE_FIREBASE_*`. Verificar a qué proyecto apuntan antes de ejecutarlo.
 
+## Datos de demostración
+
+Para mostrar o probar todas las funcionalidades hay un script que crea cuentas y un historial realista: un administrador, estudiantes con perfiles distintos (fuerte, medio, débil en un área, nuevo sin pruebas e inactivo), pruebas repartidas en los últimos días, simulacros, ranking y logros. En los emuladores el historial se genera invocando la Cloud Function `calificarPrueba` real.
+
+Con los puertos estándar libres, desde la raíz y con `npm install` ya hecho:
+
+```bash
+npm run emuladores     # terminal 1: emuladores con el proyecto demo-learnfex
+npm run seed:demo      # terminal 2: carga cuentas, banco de preguntas e historial
+```
+
+Después se inicia el cliente con `VITE_USE_EMULATORS=true` y los demás `VITE_FIREBASE_*` de relleno, pasados en la línea de comandos. Para volver al estado inicial: `npm run seed:demo:reset`.
+
+El script también tiene un modo `--real` para cargar solo el historial de estudiantes ya registrados a mano en el proyecto real, con `--dry-run`, confirmación del proyecto y borrado de lo demo. Escribe con credenciales de administrador del proyecto, que se saltan las reglas de seguridad: leer antes la guía completa, con las cuentas, el guion de demostración y el modo real, en [`docs/datos-demo.md`](docs/datos-demo.md). Los datos de demostración deben borrarse antes de que entren estudiantes reales.
+
 ## Estructura del proyecto
 
 ```text
@@ -168,7 +187,8 @@ Advertencia: sin `SEED_USE_EMULATORS=true`, el script escribe en el proyecto de 
 │   ├── src/                  calificarPrueba, validación, calificación y gamificación
 │   └── test/                 Pruebas unitarias (node --test)
 ├── scripts/
-│   └── seed-preguntas.js     Carga de áreas, preguntas y logros
+│   ├── seed-preguntas.js     Carga de áreas, preguntas y logros
+│   └── seed-demo.js          Cuentas e historial de demostración (emuladores y modo --real)
 ├── src/
 │   ├── pages/                Pantallas (auth, student, admin, legal y la página 404)
 │   ├── components/           Componentes reutilizables (Button, Card, Input, Navbar, ...)
@@ -223,6 +243,8 @@ El procedimiento completo, con los comandos y el motivo del orden, está en el m
 - [Manual de usuario](docs/manual-usuario.md): uso de la aplicación para estudiantes y administradores.
 - [Manual técnico](docs/manual-tecnico.md): arquitectura, modelo de datos, reglas, Cloud Function, despliegue y deuda técnica.
 - [Variables de entorno](docs/variables-de-entorno.md): detalle de cada variable y bloque listo para copiar.
+- [Datos de demostración](docs/datos-demo.md): cuentas, historial, guion de demostración y modo para el proyecto real.
+- [Guion de la presentación](docs/guion-presentacion.md): guion para presentar los avances del proyecto.
 - [Documentación de QA](docs/qa/): casos de prueba y resultados de ejecución.
 - `docs/LearnFex_ERS.docx`, `docs/LearnFex_SDD.docx`, `docs/Plan_de_Proyecto_LearnFex.docx`: especificación, diseño y plan del proyecto.
 - `docs/Mapa_de_Pantallas_Usuario_Cliente.png` y `docs/Mapa_de_Pantallas_Usuario_Administrador.png`: mapas de pantallas del diseño. Son una referencia de diseño; la aplicación implementada no incluye todo lo que muestran (ver las limitaciones conocidas en el manual de usuario).
